@@ -154,26 +154,26 @@ class DimerMetropolisHastings(MetropolisHastings):
         _machine_pow = self._machine_pow
         _t_kernel = self._kernel.transition
 
-        accepted = 0
+        _w = self.machine._w
+        _r = self.machine._r
 
-        for sweep in range(self.sweep_size):
+
+        # for sweep in range(self.sweep_size):
 
             # Propose a new state using the transition kernel
-            _t_kernel(_state, _state1, _log_prob_corr)
+        accepted = _t_kernel(_state, _state1, _log_prob_corr, _w, _r, self.sweep_size)
 
-            # print(_state1[0] - _state[0])
+            # _log_values_1 = _log_val(_state1, out=_log_values_1)
 
-            _log_values_1 = _log_val(_state1, out=_log_values_1)
-            
-
-            accepted += _acc_kernel(
-                _state,
-                _state1,
-                _log_values,
-                _log_values_1,
-                _log_prob_corr,
-                _machine_pow,
-            )
+            # # Acceptance Kernel
+            # accepted += _acc_kernel(
+            #     _state,
+            #     _state1,
+            #     _log_values,
+            #     _log_values_1,
+            #     _log_prob_corr,
+            #     _machine_pow,
+            # )
 
         self._total_samples += self.sweep_size * self.n_chains
         self._accepted_samples += accepted

@@ -3,6 +3,7 @@ from netket.operator import _local_operator
 from netket import random as _random
 from numba import jit, int64, float64, complex128, int8
 from ..._jitclass import jitclass
+import math
 
 
 @jitclass([("local_states", float64[:]), ("size", int64), ("n_states", int64)])
@@ -81,25 +82,41 @@ class _DimerLocalKernel:
         self.acting_on = acting_on
         self.acting_size = acting_size
 
-    def transition(self, state, state_1,log_prob_corr):
+    def transition(self, state, state_1, log_prob_corr, w, r, sweep_size):
 
-        for n in range(state.shape[0]):
-            
-            state_1[n] = state[n]
+        accepted = 0
 
-            state_ = state[n]
+        for _ in range(sweep_size):
 
-            state_prime, mels = self.get_conn(state_)
+            for n in range(state.shape[0]):
+                
+                state_1[n] = state[n]
 
-            n_conn = state_prime.shape[0] - 1
+                state_ = state[n]
 
-            rs = _random.randint(0, n_conn)
+                state_prime, mels = self.get_conn(state_)
 
-            state_1[n] = state_prime[rs + 1]
+                n_conn = state_prime.shape[0] - 1
 
-            n_conn_prime = self.get_conn(state_1[n])[0].shape[0] - 1
+                rs = _random.randint(0, n_conn)
 
-            log_prob_corr[n] = _np.log(n_conn/n_conn_prime) * (1/2)
+                state_1[n] = state_prime[rs + 1]
+
+                n_conn_prime = self.get_conn(state_1[n])[0].shape[0] - 1
+
+                log_prob_corr[n] = _np.log(n_conn/n_conn_prime) * (1/2)
+
+            log_values = self._log_val_kernel(state.astype(_np.float64), w, r)
+            log_values_1 = self._log_val_kernel(state_1.astype(_np.float64), w, r)
+
+            accepted += self.acceptance_kernel(
+            state,
+            state_1,
+            log_values,
+            log_values_1,
+            log_prob_corr,
+            )
+        return accepted
 
 
     def random_state(self, state):
@@ -111,13 +128,13 @@ class _DimerLocalKernel:
     
     @staticmethod
     def acceptance_kernel(
-        state, state1, log_values, log_values_1, log_prob_corr, machine_pow
+        state, state1, log_values, log_values_1, log_prob_corr
     ):
         accepted = 0
 
         for i in range(state.shape[0]):
             prob = _np.exp(
-                machine_pow * (log_values_1[i] - log_values[i] + log_prob_corr[i]).real
+                2 * (log_values_1[i] - log_values[i] + log_prob_corr[i]).real
             )
             assert not math.isnan(prob)
             if prob > _random.uniform(0, 1):
@@ -126,6 +143,19 @@ class _DimerLocalKernel:
                 accepted += 1
 
         return accepted
+
+    @staticmethod
+    def _log_val_kernel(x, W, r):
+
+        if x.ndim != 2:
+            raise RuntimeError("Invalid input shape, expected a 2d array")
+
+        # if out is None:
+        out = _np.empty(x.shape[0], dtype=_np.complex128)
+        r = x.dot(W)
+        _log_cosh_sum(r, out)
+
+        return out
 
 
 
@@ -144,3 +174,16 @@ class _DimerLocalKernel:
             self.acting_on,
             self.acting_size,
         )
+
+@jit(fastmath=True)
+def _log_cosh_sum(x, out, add_factor=None):
+    x = x * _np.sign(x.real)
+    if add_factor is None:
+        for i in range(x.shape[0]):
+            out[i] = _np.sum(x[i] - _np.log(2.0) + _np.log(1.0 + _np.exp(-2.0 * x[i])))
+    else:
+        for i in range(x.shape[0]):
+            out[i] += add_factor * (
+                _np.sum(x[i] - _np.log(2.0) + _np.log(1.0 + _np.exp(-2.0 * x[i])))
+            )
+    return out

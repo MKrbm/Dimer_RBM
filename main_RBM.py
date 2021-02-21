@@ -26,5 +26,5 @@ if __name__ == "__main__":
 
     V = h * q
 
-    Dimer_RBM(h, V, length, alpha, n_iter)
+    Dimer_RBM(h = h, V = V, length = length, alpha = alpha, n_iter = n_iter)
 
