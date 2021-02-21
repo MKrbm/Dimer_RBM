@@ -102,8 +102,8 @@ class RbmSpin(AbstractMachine):
         if dtype is not float and dtype is not complex:
             raise TypeError("dtype must be either float or complex")
 
-        self._npdtype = _np.complex128 if dtype is complex else _np.float32
-
+        self._npdtype = _np.complex128 if dtype is complex else _np.float64
+        self._npdtype_state = _np.float64
         
         self._autom, self.n_hidden, alpha_symm = self._get_hidden(
             symmetry, hilbert, n_hidden, alpha
@@ -114,7 +114,7 @@ class RbmSpin(AbstractMachine):
         self._w = _np.empty((n, m), dtype=self._npdtype)
         self._a = _np.empty(n, dtype=self._npdtype) if use_visible_bias else None
         self._b = _np.empty(m, dtype=self._npdtype) if use_hidden_bias else None
-        self._r = _np.empty((1, m), dtype=self._npdtype)
+        self._r = _np.empty((1, m), dtype=self._npdtype_state)
 
         self._n_bare_par = (
             self._w.size
@@ -581,7 +581,8 @@ class RbmDimer(RbmSpin):
             A complex number when `x` is a vector and vector when `x` is a
             matrix.
         """
-        x = x.astype(dtype=self._npdtype)
+        # print(x.dtype)
+        x = x.astype(dtype=self._npdtype_state)
 
         
 

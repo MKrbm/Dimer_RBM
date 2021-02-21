@@ -86,12 +86,7 @@ class _DimerLocalKernel:
         for n in range(state.shape[0]):
             
             state_1[n] = state[n]
-            
-            # rs = _random.randint(0, e.shape[0])
-            # edge = e[rs]
-            # edge_color = ec[rs]
-            # potential_edges = cpe[rs]
-            # potential_colors = cpc[rs]
+
             state_ = state[n]
 
             state_prime, mels = self.get_conn(state_)
@@ -103,18 +98,9 @@ class _DimerLocalKernel:
             state_1[n] = state_prime[rs + 1]
 
             n_conn_prime = self.get_conn(state_1[n])[0].shape[0] - 1
-            # print(n_conn, n_conn_prime, mels)
 
             log_prob_corr[n] = _np.log(n_conn/n_conn_prime) * (1/2)
 
-        #     for i in range(2):
-        #         is_minus = 0
-        #         for j in range(2):
-        #             is_minus += _np.prod(state_[potential_edges[i,j]]) * potential_colors[i,j]
-        #         if is_minus==-2:
-        #             state_1_[edge] = state_[edge] * (-1)
-        #             break
-        # log_prob_corr.fill(0.0)
 
     def random_state(self, state):
 
