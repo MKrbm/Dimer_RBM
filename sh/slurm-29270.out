@@ -1,0 +1,4 @@
+/home/murota/Research/DimerMaster/functions.py:65: NumbaDeprecationWarning: The 'numba.jitclass' decorator has moved to 'numba.experimental.jitclass' to better reflect the experimental nature of the functionality. Please update your imports to accommodate this change and see https://numba.pydata.org/numba-doc/latest/reference/deprecation.html#change-of-jitclass-location for the time frame.
+  @jitclass(spec)
+usage: main_corr.py [-h] [--h H] [--q Q]
+main_corr.py: error: argument --h: expected one argument
