@@ -16,7 +16,7 @@ def Dimer_RBM(h, V, length, alpha, n_iter):
     hi = nk.hilbert.Spin(s=0.5, graph=g)
 
 
-    op = f.dimer_hamiltonian(h, V,np.array(length))
+    op = f.dimer_hamiltonian(V, h ,np.array(length))
     op_transition = f.dimer_flip(length = np.array(length))
 
 
