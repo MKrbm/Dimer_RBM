@@ -85,7 +85,8 @@ class _DimerLocalKernel:
     def transition(self, state, state_1, log_prob_corr, w, r, sweep_size):
 
         accepted = 0
-
+        log_values = _log_val_kernel(state.astype(_np.float64), w, r)
+        
         for _ in range(sweep_size):
 
             for n in range(state.shape[0]):
@@ -106,10 +107,10 @@ class _DimerLocalKernel:
 
                 log_prob_corr[n] = _np.log(n_conn/n_conn_prime) * (1/2)
 
-            log_values = self._log_val_kernel(state.astype(_np.float64), w, r)
-            log_values_1 = self._log_val_kernel(state_1.astype(_np.float64), w, r)
+            
+            log_values_1 = _log_val_kernel(state_1.astype(_np.float64), w, r)
 
-            accepted += self.acceptance_kernel(
+            accepted += acceptance_kernel(
             state,
             state_1,
             log_values,
@@ -126,36 +127,9 @@ class _DimerLocalKernel:
             rs = _random.randint(0, self.n_states)
             state[i] = _np.zeros_like(state[i]) + self.local_states[rs]
     
-    @staticmethod
-    def acceptance_kernel(
-        state, state1, log_values, log_values_1, log_prob_corr
-    ):
-        accepted = 0
 
-        for i in range(state.shape[0]):
-            prob = _np.exp(
-                2 * (log_values_1[i] - log_values[i] + log_prob_corr[i]).real
-            )
-            assert not math.isnan(prob)
-            if prob > _random.uniform(0, 1):
-                log_values[i] = log_values_1[i]
-                state[i] = state1[i]
-                accepted += 1
 
-        return accepted
 
-    @staticmethod
-    def _log_val_kernel(x, W, r):
-
-        if x.ndim != 2:
-            raise RuntimeError("Invalid input shape, expected a 2d array")
-
-        # if out is None:
-        out = _np.empty(x.shape[0], dtype=_np.complex128)
-        r = x.dot(W)
-        _log_cosh_sum(r, out)
-
-        return out
 
 
 
@@ -186,4 +160,35 @@ def _log_cosh_sum(x, out, add_factor=None):
             out[i] += add_factor * (
                 _np.sum(x[i] - _np.log(2.0) + _np.log(1.0 + _np.exp(-2.0 * x[i])))
             )
+    return out
+
+@jit(nopython=True)
+def acceptance_kernel(
+    state, state1, log_values, log_values_1, log_prob_corr
+):
+    accepted = 0
+
+    for i in range(state.shape[0]):
+        prob = _np.exp(
+            2 * (log_values_1[i] - log_values[i] + log_prob_corr[i]).real
+        )
+        assert not math.isnan(prob)
+        if prob > _random.uniform(0, 1):
+            log_values[i] = log_values_1[i]
+            state[i] = state1[i]
+            accepted += 1
+
+    return accepted
+
+@jit(nopython=True)
+def _log_val_kernel(x, W, r):
+
+    if x.ndim != 2:
+        raise RuntimeError("Invalid input shape, expected a 2d array")
+
+    # if out is None:
+    out = _np.empty(x.shape[0], dtype=_np.complex128)
+    r = x.dot(W)
+    _log_cosh_sum(r, out)
+
     return out

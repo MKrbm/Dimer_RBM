@@ -1,4 +1,0 @@
-/home/murota/Research/DimerMaster/functions.py:65: NumbaDeprecationWarning: The 'numba.jitclass' decorator has moved to 'numba.experimental.jitclass' to better reflect the experimental nature of the functionality. Please update your imports to accommodate this change and see https://numba.pydata.org/numba-doc/latest/reference/deprecation.html#change-of-jitclass-location for the time frame.
-  @jitclass(spec)
-  0%|          | 0/2 [00:00<?, ?it/s]  0%|          | 0/2 [00:11<?, ?it/s, Energy=-0.00214+0.00000j ± 0.00050 [σ²=0.00050, R̂=0.9997]] 50%|█████     | 1/2 [00:11<00:11, 11.95s/it, Energy=-0.00214+0.00000j ± 0.00050 [σ²=0.00050, R̂=0.9997]] 50%|█████     | 1/2 [00:18<00:11, 11.95s/it, Energy=0.00069+0.00000j ± 0.00050 [σ²=0.00048, R̂=0.9991]] 100%|██████████| 2/2 [00:18<00:00, 10.27s/it, Energy=0.00069+0.00000j ± 0.00050 [σ²=0.00048, R̂=0.9991]]100%|██████████| 2/2 [00:18<00:00,  9.15s/it, Energy=0.00069+0.00000j ± 0.00050 [σ²=0.00048, R̂=0.9991]]
-4
