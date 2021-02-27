@@ -14,4 +14,4 @@ WORKDIR=/home/murota/Research/DimerMaster
 cd $WORKDIR
 source activate netket_v3
 
-python main_dynamics.py --h $1 --q $2
+python -u main_dynamics.py --h $1 --q $2 > sh/output/h$1_q$2L=8.out

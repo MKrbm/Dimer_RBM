@@ -7,7 +7,7 @@ import netket as nk
 import functions as f
 
 
-def Dimer_Dynamics(h, V, length,alpha,  t_list, n_jobs = 1, n_chains = 10, n_samples = 100):
+def Dimer_Dynamics(h, V, length,alpha,  t_list, n_jobs = -1, n_chains = 10, n_samples = 100):
 
     name = 'h={}V={}l={}'.format(h, V, length)
 
@@ -32,8 +32,9 @@ def Dimer_Dynamics(h, V, length,alpha,  t_list, n_jobs = 1, n_chains = 10, n_sam
     ma.load(parentdir + '/save/ma/'+name)
 
 
-    sa = nk.sampler.DimerMetropolisLocal(machine=ma, op=op_transition, length = length, n_chains=n_chains, sweep_size = 72)
+    sa = nk.sampler.DimerMetropolisLocal(machine=ma, op=op_transition, length = length, n_chains=n_chains, sweep_size = 70)
     sa.generate_samples(1000) # discard the begginings of metropolis sampling.
+    print('discard samples')
     samples_state = sa.generate_samples(int(n_samples / n_chains))
     samples_state = samples_state.reshape(-1, ma.hilbert.size)
 
@@ -52,6 +53,30 @@ def Dimer_Dynamics(h, V, length,alpha,  t_list, n_jobs = 1, n_chains = 10, n_sam
             ma
             )
 
-    P = d.multiprocess(samples_state, t_list, 0, n = n_jobs) 
-    print('saving dynamics')
-    np.save(parentdir + '/save/dynamics/'+name + 'n={:.1e}.npy'.format(n_samples), P)
+    P = d.dynamics(samples_state, t_list, 0) 
+    print(P.shape)
+    # np.save(parentdir + '/save/dynamics/'+name + 'n={:.1e}.npy'.format(n_samples), P)
+
+    # d = f.dynamics3(
+    #         op._local_states,
+    #         op._basis,
+    #         op._constant,
+    #         op._diag_mels,
+    #         op._n_conns,  
+    #         op._mels,
+    #         op._x_prime,
+    #         op._acting_on,
+    #         op._acting_size,
+    #         ma
+    #         )
+
+    # P_list = []
+
+    # num = int(n_samples/200)
+    # for n in range(num):
+    #     P_list.append(d.dynamics(samples_state[n*(200) : (n+1)*(200)], t_list, 0) )
+
+    # P = np.vstack(P_list)
+    # print(P.shape)
+    # print('saving dynamics')
+    # # np.save(parentdir + '/save/dynamics/'+name + 'n={:.1e}.npy'.format(n_samples), P)

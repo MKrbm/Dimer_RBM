@@ -1,6 +1,6 @@
 #!/bin/sh
 #SBATCH --get-user-env
-#SBATCH -p stage4
+#SBATCH -p except11
 #SBATCH --mem=4000
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
@@ -14,4 +14,4 @@ WORKDIR=/home/murota/Research/DimerMaster
 cd $WORKDIR
 source activate netket_v3
 
-python main_RBM.py --h $1 --q $2
+python -u main_RBM.py --h $1 --q $2 

@@ -3,7 +3,7 @@ from . import numpy
 
 
 @singledispatch
-def Sgd(machine, learning_rate, l2reg=0, decay_factor=1.0):
+def Sgd(machine, learning_rate, l2reg=0, decay_factor=1.0, N = 100):
     r"""Stochastic Gradient Descent Optimizer.
     The `Stochastic Gradient Descent <https://en.wikipedia.org/wiki/Stochastic_gradient_descent>`_
     is one of the most popular optimizers in machine learning applications.
@@ -31,4 +31,4 @@ def Sgd(machine, learning_rate, l2reg=0, decay_factor=1.0):
        >>> from netket.optimizer import Sgd
        >>> op = Sgd(learning_rate=0.05)
     """
-    return numpy.Sgd(learning_rate, l2reg, decay_factor)
+    return numpy.Sgd(learning_rate, l2reg, decay_factor, N)

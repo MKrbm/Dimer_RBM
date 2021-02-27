@@ -122,6 +122,8 @@ class Vmc(AbstractVariationalDriver):
             else self._n_samples_node * self._batch_size // 10
         )
 
+        print('discard = ',self._n_discard)
+
     def _forward_and_backward(self):
         """
         Performs a number of VMC optimization steps.

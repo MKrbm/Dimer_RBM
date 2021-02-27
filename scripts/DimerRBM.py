@@ -7,10 +7,13 @@ import netket as nk
 import functions as f
 
 
-def Dimer_RBM(h, V, length, alpha, n_iter):
+def Dimer_RBM(h, V, length, alpha, n_iter, n_samples, n_chains, n_discard , sweep_size):
+
+
 
 
     name = 'h={}V={}l={}'.format(h, V, length)
+
 
     g = nk.graph.Graph(nodes = [i for i in range(length[0] * length[1] * 2)])
     hi = nk.hilbert.Spin(s=0.5, graph=g)
@@ -27,17 +30,20 @@ def Dimer_RBM(h, V, length, alpha, n_iter):
     ma.init_random_parameters(seed=1234)
 
 
-
-    sa = nk.sampler.DimerMetropolisLocal(machine=ma, op=op_transition, length = length)
+    sa = nk.sampler.DimerMetropolisLocal(machine=ma, op=op_transition, length = length, sweep_size = sweep_size, n_chains = n_chains)
     sr = nk.optimizer.SR(ma, diag_shift=0)
-    opt = nk.optimizer.Sgd(ma, learning_rate=0.01)
+    opt = nk.optimizer.Sgd(ma, learning_rate=0.05, decay_factor = 'sigmoid decay' ,N = n_iter)
     gs = nk.Vmc(
     hamiltonian=op,
     sampler=sa,
     optimizer=opt,
-    n_samples=2000,
+    n_samples=n_samples,
     sr = sr,
+    n_discard = n_discard,
     )
+
+
     gs.run(n_iter=n_iter, out=parentdir + '/log/'+name)
+
 
     ma.save(parentdir + '/save/ma/'+name)

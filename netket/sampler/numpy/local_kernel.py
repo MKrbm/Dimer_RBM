@@ -86,37 +86,54 @@ class _DimerLocalKernel:
 
         accepted = 0
         log_values = _log_val_kernel(state.astype(_np.float64), w, r)
-        
+        batch_size = state.shape[0]
+        sections = _np.zeros(batch_size + 1, dtype=_np.int64)
+        sections_1 = _np.zeros(batch_size + 1, dtype=_np.int64)
+        state_1 = state
+
+        state_prime, mels = self.get_conn(state, sections[1:])
+        n_conn = - sections[:-1] + sections[1:] - 1
+
         for _ in range(sweep_size):
 
-            for n in range(state.shape[0]):
-                
-                state_1[n] = state[n]
 
-                state_ = state[n]
+            # state_prime_, mels_ = self.get_conn(state, sections[1:])
+            # n_conn_ = - sections[:-1] + sections[1:] - 1
 
-                state_prime, mels = self.get_conn(state_)
+            # print((state_prime_ == state_prime).any())
+            # print((n_conn_ + 1).sum())
 
-                n_conn = state_prime.shape[0] - 1
+            rs = (_np.random.rand(batch_size) * n_conn).astype(_np.int64)
 
-                rs = _random.randint(0, n_conn)
+            state_1 = state_prime[sections[:-1] + rs + 1]
 
-                state_1[n] = state_prime[rs + 1]
+            state_1_prime, mels_1 = self.get_conn(state_1, sections_1[1:])
+            n_conn_1 = - sections_1[:-1] + sections_1[1:] - 1
 
-                n_conn_prime = self.get_conn(state_1[n])[0].shape[0] - 1
-
-                log_prob_corr[n] = _np.log(n_conn/n_conn_prime) * (1/2)
+            log_prob_corr = _np.log(n_conn/n_conn_1) * (1/2)
 
             
             log_values_1 = _log_val_kernel(state_1.astype(_np.float64), w, r)
 
-            accepted += acceptance_kernel(
+            plus, state_prime, mels, sections = acceptance_kernel(
             state,
             state_1,
             log_values,
             log_values_1,
             log_prob_corr,
+            n_conn,
+            n_conn_1,
+            state_prime,
+            state_1_prime,
+            mels,
+            mels_1,
+            sections,
+            sections_1
             )
+
+            # sections = sections_1
+
+            accepted += plus
         return accepted
 
 
@@ -133,11 +150,11 @@ class _DimerLocalKernel:
 
 
 
-    def get_conn(self, x):
+    def get_conn(self, x, sections):
 
         return get_conn(
-            x.reshape((1, -1)),
-            _np.ones(1),
+            x,
+            sections,
             self.local_states,
             self.basis,
             self.constant,
@@ -164,21 +181,63 @@ def _log_cosh_sum(x, out, add_factor=None):
 
 @jit(nopython=True)
 def acceptance_kernel(
-    state, state1, log_values, log_values_1, log_prob_corr
+    state, state1, log_values, log_values_1, log_prob_corr, n_conn, n_conn_1,
+    state_prime, state_1_prime, mels, mels_1 ,sections, sections_1,
 ):
     accepted = 0
 
-    for i in range(state.shape[0]):
-        prob = _np.exp(
-            2 * (log_values_1[i] - log_values[i] + log_prob_corr[i]).real
-        )
-        assert not math.isnan(prob)
-        if prob > _random.uniform(0, 1):
-            log_values[i] = log_values_1[i]
-            state[i] = state1[i]
-            accepted += 1
+    batch_size = state.shape[0]
 
-    return accepted
+    # for i in range(state.shape[0]):
+    #     prob = _np.exp(
+    #         2 * (log_values_1[i] - log_values[i] + log_prob_corr[i]).real
+    #     )
+    #     assert not math.isnan(prob)
+    #     if prob > _random.uniform(0, 1):
+    #         log_values[i] = log_values_1[i]
+    #         state[i] = state1[i]
+    #         accepted += 1
+    prob = _np.exp(
+        2 * (log_values_1 - log_values + log_prob_corr).real
+    )
+
+    index = prob > _np.random.rand(batch_size)
+    n_conn[index] = n_conn_1[index]
+    log_values[index] = log_values_1[index]
+    state[index] = state1[index]
+    accepted += index.sum()
+
+    i = 0
+    j = 0
+    state_prime_ = _np.zeros(((n_conn + 1).sum(), state.shape[1]), dtype=_np.int8)
+    mels_ = _np.zeros((n_conn + 1).sum(), dtype = _np.complex128)
+    sections_ = _np.zeros_like(sections)
+    for n in n_conn:
+        if index[j]:
+            assert (sections_1[j+1] - sections_1[j] ) == n + 1
+            temp = state_1_prime[sections_1[j]: sections_1[j+1]]
+            temp_mel = mels_1[sections_1[j]:sections_1[j+1]]
+        else:
+            assert (sections[j+1] - sections[j] ) == n + 1
+            temp = state_prime[sections[j]: sections[j+1]]
+            temp_mel = mels[sections[j]:sections[j+1]]
+        
+        sections_[j+1] = n + sections_[j] + 1
+        
+        state_prime_[i:i+n+1] = temp
+        mels_[i:i+n+1] = temp_mel
+        i += n+1
+        j += 1
+    
+    # sections = sections_1
+    # print('done')
+
+    # state_prime = state_prime_
+    # mels = mels_
+
+
+
+    return accepted , state_prime_, mels_, sections_
 
 @jit(nopython=True)
 def _log_val_kernel(x, W, r):
@@ -192,3 +251,21 @@ def _log_val_kernel(x, W, r):
     _log_cosh_sum(r, out)
 
     return out
+
+# @jit(nopython=True)
+# def acceptance_kernel(
+#     state, state1, log_values, log_values_1, log_prob_corr
+# ):
+#     accepted = 0
+
+#     for i in range(state.shape[0]):
+#         prob = _np.exp(
+#             2 * (log_values_1[i] - log_values[i] + log_prob_corr[i]).real
+#         )
+#         assert not math.isnan(prob)
+#         if prob > _random.uniform(0, 1):
+#             log_values[i] = log_values_1[i]
+#             state[i] = state1[i]
+#             accepted += 1
+
+#     return accepted

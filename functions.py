@@ -374,9 +374,8 @@ class dynamics2:
         t_d = time_list[1]-time_list[0]
         t_end = np.shape(time_list)[0]
         p_array = np.zeros((X.shape[0],t_end,X.shape[1]),dtype= np.int8)
-        t_s = time_list[0]
-        
         for j in range(X.shape[0]):
+            # print('done ', j/X.shape[0])
             p = p_array[j]
             # x = X[j]
             time = 0
@@ -398,7 +397,7 @@ class dynamics2:
                 # state = x_prime.copy()
                 # state = state.astype(np.float64)
 
-                log_val_prime = np.real(log_val_kernel(x_prime.astype(np.float32), None, _w, _a, _b, _r))
+                log_val_prime = np.real(log_val_kernel(x_prime.astype(np.float64), None, _w, _a, _b, _r))
 
                 mels = np.real(mels) * np.exp(log_val_prime - log_val_prime[0])
                 n_conn = mels.shape[0]
@@ -408,19 +407,14 @@ class dynamics2:
                 r_2 = np.random.uniform(0,1)
                 tau = np.log(1/r_1)/a_0
                 time += tau
-                if time > t_s:
-                    t_index = int((time-t_s) // t_d)
-                    if t_index >= t_end - 1:
-                        p[np.arange(t_index_b + 1, t_end)] = X[j]
-    #                     for i in range(t_index_b + 1, t_end):
-    #                         p[i,:] = x
-    #                     return p
-                        break
-    #                 for i in range(t_index_b + 1, t_index+1):　
-    #                     p[i,:] = x
-                    p[np.arange(t_index_b + 1, t_index+1)] = X[j]
+                t_index = int(time // t_d)
 
-                    t_index_b = t_index
+                if t_index >= t_end - 1:
+                    p[np.arange(t_index_b + 1, t_end)] = X[j]
+                    break
+                p[np.arange(t_index_b + 1, t_index+1)] = X[j]
+
+                t_index_b = t_index
 
                 s = 0
 
@@ -431,7 +425,6 @@ class dynamics2:
                         break
     #                     print(x_prime[i])
     #                     print(x)
-            
         return p_array
             
         
@@ -860,3 +853,230 @@ class new_hex:
         return np.array([[np.cos(theta), -np.sin(theta)],[np.sin(theta), np.cos(theta)]]).astype(np.float32)
 
 
+get_conn = nk.operator.LocalOperator._get_conn_flattened_kernel
+log_val_kernel = nk.machine.rbm.RbmSpin._log_val_kernel
+
+#N = 200 give the best performance.
+
+import numba as nb
+class dynamics3: 
+    def __init__(self,
+                local_states,
+                basis,
+                constant,
+                diag_mels,
+                n_conns,
+                mels,
+                x_prime,
+                acting_on,
+                acting_size,
+                ma,):
+        
+        self.local_states = np.sort(local_states)
+        self.basis = basis
+        self.constant = constant
+        self.diag_mels = diag_mels
+        self.n_conns = n_conns
+        self.mels = mels
+        self.x_prime = x_prime
+        self.acting_on = acting_on
+        self.acting_size = acting_size
+        self.ma = ma
+
+
+        self._w = ma._w
+        self._a = ma._a
+        self._b = ma._b
+        self._r = ma._r
+        
+    
+    
+    def dynamics(self, X, time_list, E0):
+        
+        
+        
+        
+        return self._dynamics(
+            X, 
+            time_list, 
+            E0,
+            self.local_states,
+            self.basis,
+            self.constant,
+            self.diag_mels,
+            self.n_conns,
+            self.mels,
+            self.x_prime,
+            self.acting_on,
+            self.acting_size,
+            self._w,
+            self._a,
+            self._b,
+            self._r,
+                
+        )
+    
+    
+    @staticmethod
+    @njit
+    def _dynamics(
+            X,
+            time_list,
+            E0,
+            _local_states,
+            _basis,
+            _constant,
+            _diag_mels,
+            _n_conns,
+            _mels,
+            _x_prime,
+            _acting_on,
+            _acting_size,
+            _w,
+            _a,
+            _b,
+            _r,
+            ):
+        
+        # basis is float64[:]
+        
+        
+        batch_size = X.shape[0]
+        t_d = time_list[1]-time_list[0]
+        t_end = np.shape(time_list)[0]
+        p_array = np.zeros((batch_size,t_end,X.shape[1]),dtype= np.int8) + 3
+        P = p_array
+        t_s = time_list[0]
+        X = X.astype(np.int8)
+        assert t_s == 0
+        
+        
+#         for j in range(X.shape[0]):
+            # print('done ', j/X.shape[0])
+#             p = p_array[j]
+            # x = X[j]
+        time = np.zeros(batch_size)
+        t_index_b = np.zeros(batch_size, dtype = np.int64)
+        sections = np.zeros(batch_size + 1, dtype = np.int64)
+        a_0 = np.zeros(batch_size)
+#         continue_index = np.ones(batch_size, dtype=nb.boolean)
+        continue_index = np.arange(batch_size)
+        ci = continue_index.copy()
+        m = 0
+        
+        while True:
+            
+                     
+            x_prime, mels = get_conn(
+                                X,
+                                sections[1:],
+                                _local_states,
+                                _basis,
+                                _constant,
+                                _diag_mels,
+                                _n_conns,
+                                _mels,
+                                _x_prime,
+                                _acting_on,
+                                _acting_size)
+
+            # state = x_prime.copy()
+            # state = state.astype(np.float64)
+
+            log_val_prime = np.real(log_val_kernel(x_prime.astype(np.float64), None, _w, _a, _b, _r))
+            
+            for n in range(batch_size):
+                log_val_prime[sections[n] : sections[n+1]] -= log_val_prime[sections[n]]
+
+            mels = np.real(mels) * np.exp(log_val_prime)
+            N_conn = sections[1:] - sections[:-1] - 1
+            for n in range(batch_size):
+                a_0[n] = (-1)* mels[sections[n] + 1: sections[n+1]].sum()
+#             print(a_0[0], N_conn[0], mels[sections[0] + 1: sections[1]])
+                
+#             print((a_0 - mels[sections[:-1]]).mean(), mels[sections[:-1]].mean())
+
+                
+            r_1 = np.random.rand(batch_size)
+            r_2 = np.random.rand(batch_size)
+            
+            tau = np.log(1/r_1)/a_0
+            time += tau
+
+            t_index = ((time // t_d) + 1).astype(np.int64)  
+            over_index = (t_index >= t_end)
+            t_index[over_index] = t_end
+            
+            m += 1
+            
+            
+           
+            
+            for n in range(batch_size):
+                P[n, t_index_b[n] : t_index[n]] = X[n]
+                
+            if over_index.all():
+                p_array[continue_index] = P
+                break
+                
+            t_index_b = t_index
+            
+
+            
+            
+            for n in range(batch_size):
+                s = 0
+                for i in range(N_conn[n]):
+                    s -= mels[sections[n] + 1 + i]
+                    if s >= r_2[n] * a_0[n]:
+                        X[n] = x_prime[sections[n] + 1 + i]
+                        break
+
+
+                
+            if over_index.any():
+                
+                p_array[continue_index] = P
+                
+                
+                tci = np.logical_not(over_index).astype(nb.boolean)
+                continue_index = continue_index[tci]
+                
+                P = p_array[continue_index]
+                
+                batch_size = np.sum(tci)
+                P = p_array[continue_index]
+                X = X[tci]
+                time = time[tci]
+                t_index_b = t_index_b[tci]
+                sections = np.zeros(batch_size + 1, dtype = np.int64)
+                a_0 = np.zeros(batch_size)
+        return p_array
+            
+        
+    def run(self, basis, t_list, E_0, qout):
+        
+        out = self.dynamics(basis, t_list, E_0)
+        
+        qout.put(out)
+    
+        
+    def multiprocess(self, basis, t_list, E0 , n = 1):
+        queue = []
+        process = []
+        N = basis.shape[0] 
+        index = np.round(np.linspace(0, N, n + 1)).astype(np.int)
+
+        for i in range(n):
+            queue.append(mp.Queue())
+            p = mp.Process(target=self.run, args=(basis[index[i]:index[i+1]], t_list, E0 ,queue[i]))
+            p.start()
+            process.append(p)
+
+
+        out = []
+        for q in queue:
+            out.append(q.get())
+
+        
+        return np.vstack(out)
