@@ -135,9 +135,14 @@ class Vmc(AbstractVariationalDriver):
         self._sampler.reset()
 
         # Burnout phase
+
+        print(self._sampler._state[0])
+
+        print('n_discard = ',self._n_discard)
         self._sampler.generate_samples(self._n_discard)
 
         # Generate samples and store them
+        print('n_samples_node = ',self._n_samples_node)
         self._samples = self._sampler.generate_samples(
             self._n_samples_node, samples=self._samples
         )

@@ -59,6 +59,7 @@ class AbstractSampler(abc.ABC):
     def generate_samples(self, n_samples, init_random=False, samples=None):
         # print(whoami(),whosdaddy(), type(samples))
         self.reset(init_random)
+        start = time.time()
 
         if samples is None:
             samples = _np.empty((n_samples, self.sample_shape[0], self.sample_shape[1]))
@@ -67,4 +68,5 @@ class AbstractSampler(abc.ABC):
             samples[i] = self.__next__()
             
         
+        print(time.time()-start,'for metropolis')
         return samples

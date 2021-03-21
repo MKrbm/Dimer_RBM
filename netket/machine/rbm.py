@@ -547,6 +547,7 @@ class RbmDimer(RbmSpin):
         use_visible_bias=True,
         use_hidden_bias=True,
         symmetry=None,
+        reverse = False, 
         dtype=float,
         dimer_length = [2,4],
         ma = None,
@@ -554,6 +555,7 @@ class RbmDimer(RbmSpin):
 
         self.ma = ma
         self.hex = hexagon
+        self.reverse = reverse
 
         super().__init__(
             hilbert,
@@ -654,10 +656,10 @@ class RbmDimer(RbmSpin):
             return None, m, m
         else:
             if symmetry is True:
-                autom = self.hex.autom
+                autom = self.hex.autom(reverse = self.reverse)
             else:
                 try:
-                    autom = self.hex.autom
+                    autom = self.hex.autom(sreverse = elf.reverse)
                     assert hilbert.size == autom.shape[1]
                 except:
                     raise RuntimeError("Cannot find a valid automorphism array.")

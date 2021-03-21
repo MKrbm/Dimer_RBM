@@ -107,7 +107,12 @@ class MetropolisHastings(AbstractSampler):
         for sweep in range(self.sweep_size):
 
             # Propose a new state using the transition kernel
+            start = time.time()
+            print(_state.dtype)
             _t_kernel(_state, _state1, _log_prob_corr)
+
+            if sweep == 0:
+                print('transition took :' ,time.time()-start)
 
             _log_values_1 = _log_val(_state1, out=_log_values_1)
 
@@ -139,8 +144,8 @@ class DimerMetropolisHastings(MetropolisHastings):
     def __init__(self, machine, kernel, n_chains=16, sweep_size=None, length = [4,2]):
         
         super().__init__(machine, kernel, n_chains, sweep_size)
-        hexagon = _nk.machine.new_hex(l = _np.array(length))
-        self.e, self.ec, self.cpe, self.cpc = hexagon.for_hamiltonian()
+        # hexagon = _nk.machine.new_hex(l = _np.array(length))
+        # self.e, self.ec, self.cpe, self.cpc = hexagon.for_hamiltonian()
     
     def __next__(self):
 
@@ -161,7 +166,11 @@ class DimerMetropolisHastings(MetropolisHastings):
         # for sweep in range(self.sweep_size):
 
             # Propose a new state using the transition kernel
+        # start = time.time()
         accepted = _t_kernel(_state, _state1, _log_prob_corr, _w, _r, self.sweep_size)
+        # print(_state.dtype)
+        # print('transition took :' ,time.time()-start)
+        
 
             # _log_values_1 = _log_val(_state1, out=_log_values_1)
 

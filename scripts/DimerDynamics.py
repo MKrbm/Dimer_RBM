@@ -4,7 +4,7 @@ parentdir = os.path.dirname(currentdir)
 sys.path.append(parentdir)
 import numpy as np
 import netket as nk
-import functions as f
+from scripts import functions as f
 
 
 def Dimer_Dynamics(h, V, length,alpha,  t_list, n_jobs = -1, n_chains = 10, n_samples = 100):
@@ -40,18 +40,7 @@ def Dimer_Dynamics(h, V, length,alpha,  t_list, n_jobs = -1, n_chains = 10, n_sa
 
     print('prepared initial samples')
 
-    d = f.dynamics2(
-            op._local_states,
-            op._basis,
-            op._constant,
-            op._diag_mels,
-            op._n_conns,  
-            op._mels,
-            op._x_prime,
-            op._acting_on,
-            op._acting_size,
-            ma
-            )
+    d = f.dynamics2(op, ma)
 
     P = d.dynamics(samples_state, t_list, 0) 
     print(P.shape)

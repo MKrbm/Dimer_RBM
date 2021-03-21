@@ -315,7 +315,7 @@ class new_hex:
 
         return translate_coors.reshape((c_.shape[0],)+coors.shape)
     
-    def mirror(self, lattice_num_array, axis = np.array([1,0])):
+    def reverse(self, lattice_coor_array):
 
         '''
         lattice_num : index of lattice to be mirrored.
@@ -324,29 +324,31 @@ class new_hex:
         8  9  10 11
         12 13 14 15
         '''
-        lattice_num_array_ = lattice_num_array.reshape(-1, np.prod(self.l) * 2)
+        lattice_coor_array_ = lattice_coor_array.reshape(-1, 2)
 
-        lattice_ = lattice_num_array_.reshape(-1, self.l[1] * 2, self.l[0])
+        cori  = np.argwhere(self.edges_color==-1)[0][0] #center of reverse index
 
-        lattice_ = np.roll(lattice_, (1, 1), axis=(1,2))
-        print(lattice_)
-
-        if axis[0] % 2 == 1:
-            lattice_ = lattice_[:,:,::-1]
+        corc = self.lattice_coor[self.edges[cori]].sum(axis=0)/2 #center of reverse coordinate
         
-        if axis[1] % 2 == 1:
-            lattice_ = lattice_[:,::-1, :]
+        lattice_coor_array_prime = -(lattice_coor_array_ - corc) + corc
 
-        lattice_ = np.roll(lattice_, (-1, -1), axis=(1,1))
-        lattice_num_array_ = lattice_.reshape(lattice_num_array_.shape)
+        lattice_coor_array_prime = self.ProcessPeriodic(lattice_coor_array_prime)
 
-        return lattice_num_array_
+        return lattice_coor_array_prime.reshape(lattice_coor_array.shape)
 
-    @property
-    def autom(self):
+    # @property
+    def autom(self, reverse=False):
         coordinate = self.lattice_coor
 
-        return self.coor_to_lattice_num(self.translation(coordinate, self.all_unit_cell))
+        # return_array = self.coor_to_lattice_num(self.translation(coordinate, self.all_unit_cell))
+        return_array_coor = self.translation(coordinate, self.all_unit_cell)
+        if reverse:
+            return_array_coor_ = return_array_coor.copy()
+            return_array_coor_ = self.reverse(return_array_coor_)
+            return_array_coor = np.concatenate((return_array_coor, return_array_coor_),axis=0)
+        
+        return self.coor_to_lattice_num(return_array_coor)
+
         
 
         

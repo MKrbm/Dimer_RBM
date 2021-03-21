@@ -3,7 +3,7 @@ from ._local_values import local_values
 from ._der_local_values import der_local_values
 
 
-from ._local_operator import LocalOperator, DimerLocalOperator
+from ._local_operator import LocalOperator, DimerLocalOperator, DimerLocalOperator2
 # from ._Dimer_local_operator import DimerLocalOperator
 from ._local_liouvillian import LocalLiouvillian
 from ._graph_operator import GraphOperator

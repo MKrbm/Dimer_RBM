@@ -48,15 +48,17 @@ spec = [
     ("mels", complex128[:,:,:]),
     ("x_prime", int8[:,:,:,:]),
     ("acting_on", int64[:,:]),
-    ("acting_size", int64[:]),
+    # ("acting_size", int64[:]),
+    ("acting_size", int64),
     
 ]
 
-get_conn = _local_operator.LocalOperator._get_conn_flattened_kernel
+get_conn1 = _local_operator.LocalOperator._get_conn_flattened_kernel
+get_conn2 = _local_operator.DimerLocalOperator2._get_conn_flattened_kernel
 
 
 @jitclass(spec)
-class _DimerLocalKernel:
+class _DimerLocalKernel_2:
     def __init__(self, 
                 local_states, 
                 size,
@@ -73,14 +75,16 @@ class _DimerLocalKernel:
         self.local_states = _np.sort(local_states)
         self.size = size
         self.n_states = self.local_states.size
-        self.basis = basis
+        self.basis = basis[::-1].copy()
+        # self.basis = basis
         self.constant = constant
         self.diag_mels = diag_mels
         self.n_conns = n_conns
         self.mels = mels
         self.x_prime = x_prime
         self.acting_on = acting_on
-        self.acting_size = acting_size
+        self.acting_size = int(acting_size[0])
+        # self.acting_size = acting_size
 
     def transition(self, state, state_1, log_prob_corr, w, r, sweep_size):
 
@@ -92,7 +96,7 @@ class _DimerLocalKernel:
         state_1 = state
 
         state_prime, mels = self.get_conn(state, sections[1:])
-        n_conn = - sections[:-1] + sections[1:] - 1
+        n_conn = -sections[:-1] + sections[1:] - 1
 
         for _ in range(sweep_size):
 
@@ -152,7 +156,153 @@ class _DimerLocalKernel:
 
     def get_conn(self, x, sections):
 
-        return get_conn(
+        # return get_conn1(
+        #     x,
+        #     sections,
+        #     self.local_states,
+        #     self.basis,
+        #     self.constant,
+        #     self.diag_mels,
+        #     self.n_conns,
+        #     self.mels,
+        #     self.x_prime,
+        #     self.acting_on,
+        #     self.acting_size,
+        # )
+
+        return get_conn2(
+            x,
+            sections,
+            self.basis,
+            self.constant,
+            self.diag_mels,
+            self.n_conns,
+            self.mels,
+            self.x_prime,
+            self.acting_on,
+            self.acting_size,
+        )
+
+spec = [
+    ("local_states", int8[:]),
+    ("size", int64), 
+    ("n_states", int64),
+    ("basis", int64[:]),
+    ("constant", int64),
+    ("diag_mels", complex128[:,:]),
+    ("n_conns", int64[:,:]),
+    ("mels", complex128[:,:,:]),
+    ("x_prime", int8[:,:,:,:]),
+    ("acting_on", int64[:,:]),
+    ("acting_size", int64[:]),
+    # ("acting_size", int64),
+    
+]
+
+get_conn1 = _local_operator.LocalOperator._get_conn_flattened_kernel
+get_conn2 = _local_operator.DimerLocalOperator2._get_conn_flattened_kernel
+
+
+@jitclass(spec)
+class _DimerLocalKernel_1:
+    def __init__(self, 
+                local_states, 
+                size,
+                basis,
+                constant,
+                diag_mels,
+                n_conns,
+                mels,
+                x_prime,
+                acting_on,
+                acting_size,
+                ):
+
+        self.local_states = _np.sort(local_states)
+        self.size = size
+        self.n_states = self.local_states.size
+        # self.basis = basis[::-1].copy()
+        self.basis = basis
+        self.constant = constant
+        self.diag_mels = diag_mels
+        self.n_conns = n_conns
+        self.mels = mels
+        self.x_prime = x_prime
+        self.acting_on = acting_on
+        # self.acting_size = int(acting_size[0])
+        self.acting_size = acting_size
+
+    def transition(self, state, state_1, log_prob_corr, w, r, sweep_size):
+
+        accepted = 0
+        log_values = _log_val_kernel(state.astype(_np.float64), w, r)
+        batch_size = state.shape[0]
+        sections = _np.zeros(batch_size + 1, dtype=_np.int64)
+        sections_1 = _np.zeros(batch_size + 1, dtype=_np.int64)
+        state_1 = state
+
+        state_prime, mels = self.get_conn(state, sections[1:])
+        n_conn = -sections[:-1] + sections[1:] - 1
+
+        for _ in range(sweep_size):
+
+
+            # state_prime_, mels_ = self.get_conn(state, sections[1:])
+            # n_conn_ = - sections[:-1] + sections[1:] - 1
+
+            # print((state_prime_ == state_prime).any())
+            # print((n_conn_ + 1).sum())
+
+            rs = (_np.random.rand(batch_size) * n_conn).astype(_np.int64)
+
+            state_1 = state_prime[sections[:-1] + rs + 1]
+
+            state_1_prime, mels_1 = self.get_conn(state_1, sections_1[1:])
+            n_conn_1 = - sections_1[:-1] + sections_1[1:] - 1
+
+            log_prob_corr = _np.log(n_conn/n_conn_1) * (1/2)
+
+            
+            log_values_1 = _log_val_kernel(state_1.astype(_np.float64), w, r)
+
+            plus, state_prime, mels, sections = acceptance_kernel(
+            state,
+            state_1,
+            log_values,
+            log_values_1,
+            log_prob_corr,
+            n_conn,
+            n_conn_1,
+            state_prime,
+            state_1_prime,
+            mels,
+            mels_1,
+            sections,
+            sections_1
+            )
+
+            # sections = sections_1
+
+            accepted += plus
+        return accepted
+
+
+    def random_state(self, state):
+
+        for i in range(state.shape[0]):
+#         for si in range(state.shape[1]):
+            rs = _random.randint(0, self.n_states)
+            state[i] = _np.zeros_like(state[i]) + self.local_states[rs]
+    
+
+
+
+
+
+
+    def get_conn(self, x, sections):
+
+        return get_conn1(
             x,
             sections,
             self.local_states,
@@ -165,6 +315,19 @@ class _DimerLocalKernel:
             self.acting_on,
             self.acting_size,
         )
+
+        # return get_conn2(
+        #     x,
+        #     sections,
+        #     self.basis,
+        #     self.constant,
+        #     self.diag_mels,
+        #     self.n_conns,
+        #     self.mels,
+        #     self.x_prime,
+        #     self.acting_on,
+        #     self.acting_size,
+        # )
 
 @jit(fastmath=True)
 def _log_cosh_sum(x, out, add_factor=None):

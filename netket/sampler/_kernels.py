@@ -9,20 +9,39 @@ def _LocalKernel(machine):
         _np.asarray(machine.hilbert.local_states), machine.input_size
     )
 
-def _DimerLocalKernel(machine, op):
-    return numpy._DimerLocalKernel(
-        _np.asarray(machine.hilbert.local_states, dtype=_np.int8),
-        machine.input_size,
-        op._basis,
-        op._constant,
-        op._diag_mels,
-        op._n_conns,
-        op._mels,
-        op._x_prime,
-        op._acting_on,
-        op._acting_size,
+def _DimerLocalKernel(machine, op, kernel):
 
-    )
+
+    if kernel == 1:
+        return numpy._DimerLocalKernel_1(
+            _np.asarray(machine.hilbert.local_states, dtype=_np.int8),
+            machine.input_size,
+            op._basis,
+            op._constant,
+            op._diag_mels,
+            op._n_conns,
+            op._mels,
+            op._x_prime,
+            op._acting_on,
+            op._acting_size
+        )
+
+        
+    elif kernel == 2:
+        return numpy._DimerLocalKernel_2(
+            _np.asarray(machine.hilbert.local_states, dtype=_np.int8),
+            machine.input_size,
+            op._basis,
+            op._constant,
+            op._diag_mels,
+            op._n_conns,
+            op._mels,
+            op._x_prime,
+            op._acting_on,
+            op._acting_size
+        )
+
+
 
 
 @singledispatch
