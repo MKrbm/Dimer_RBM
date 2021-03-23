@@ -185,32 +185,33 @@ class new_dynamics:
         return p_array, t_array
             
         
-    def run(self, basis, t_list, E_0, qout):
+    def run(self, X, num, qout):
         
-        out = self.dynamics(basis, t_list, E_0)
+        out = self.dynamics(X, num)
         
         qout.put(out)
     
         
-    def multiprocess(self, basis, t_list, E0 , n = 1):
+    def multiprocess(self, X, num,  n = 1):
         queue = []
         process = []
-        N = basis.shape[0] 
+        N = X.shape[0] 
         index = np.round(np.linspace(0, N, n + 1)).astype(np.int)
 
         for i in range(n):
             queue.append(mp.Queue())
-            p = mp.Process(target=self.run, args=(basis[index[i]:index[i+1]], t_list, E0 ,queue[i]))
+            p = mp.Process(target=self.run, args=(X[index[i]:index[i+1]], num ,queue[i]))
             p.start()
             process.append(p)
-
-
-        out = []
-        for q in queue:
-            out.append(q.get())
-
         
-        return np.vstack(out)
+        out1 = []
+        out2 = []
+        for q in queue:
+            out = q.get()
+            out1.append(out[0])
+            out2.append(out[1])
+        
+        return np.concatenate(out1, axis=1), np.concatenate(out2, axis=1)
 
 
 
