@@ -11,6 +11,7 @@ from netket.stats import (
 
 from netket.vmc_common import info, tree_map
 from netket.abstract_variational_driver import AbstractVariationalDriver
+import time
 
 
 
@@ -136,17 +137,20 @@ class Vmc(AbstractVariationalDriver):
 
         # Burnout phase
 
-        print(self._sampler._state[0])
 
         print('n_discard = ',self._n_discard)
-        self._sampler.generate_samples(self._n_discard)
+        s = time.time()
+        self._sampler.discard(self._n_discard)
+        print('discard samples', time.time()-s)
 
         # Generate samples and store them
         print('n_samples_node = ',self._n_samples_node)
+
+        s = time.time()
         self._samples = self._sampler.generate_samples(
             self._n_samples_node, samples=self._samples
         )
-
+        print('generate_samples : ',time.time()-s)
 
 
         # print(hexagon.is_dimer_basis2(self._samples[0]))
@@ -155,7 +159,10 @@ class Vmc(AbstractVariationalDriver):
 
         # Compute the local energy estimator and average Energy
         # print(whoami(), whosdaddy())
+
+        s = time.time()
         eloc, self._loss_stats = self._get_mc_stats(self._ham)
+        print('get_mc_stats', time.time()-s)
 
         # Center the local energy
         eloc -= _mean(eloc)
@@ -164,15 +171,20 @@ class Vmc(AbstractVariationalDriver):
         eloc_r = eloc.reshape(-1, 1)
 
         # Perform update
+
         if self._sr:
+            s = time.time()
             # When using the SR (Natural gradient) we need to have the full jacobian
             self._grads, self._jac = self._machine.vector_jacobian_prod(
                 samples_r, eloc_r / self._n_samples, self._grads, return_jacobian=True
             )
+            print('cal O and jac ', time.time()-s)
+            s = time.time()
 
             self._grads = tree_map(_sum_inplace, self._grads)
 
             self._dp = self._sr.compute_update(self._jac, self._grads, self._dp)
+            print('compute_update ', time.time()-s)
 
         else:
             # Computing updates using the simple gradient

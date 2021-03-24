@@ -1,5 +1,6 @@
 import abc
 import numpy as _np
+import time
 
 
 class AbstractMachine(abc.ABC):
@@ -72,12 +73,17 @@ class AbstractMachine(abc.ABC):
 
         elif x.ndim == 2:
 
+            s = time.time()
             jacobian = self.der_log(x)
+            print('     cal jacobian ',time.time()-s)
 
+            s = time.time()
             if conjugate:
                 out = _np.dot(jacobian.transpose().conjugate(), vec, out)
             else:
                 out = _np.dot(jacobian.transpose(), vec.conjugate(), out)
+            
+            print('     cal F', time.time()-s)
 
         out = out.reshape(-1)
 

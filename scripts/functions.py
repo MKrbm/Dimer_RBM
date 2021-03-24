@@ -207,7 +207,7 @@ def dimer_hamiltonian(V, h,length = [4, 2]):
     e, ec, ce, cec = hexagon.for_hamiltonian()
 
     hi = nk.hilbert.Spin(s=0.5, graph=g)
-    op = nk.operator.DimerLocalOperator2(hi)
+    op = nk.operator.DimerLocalOperator(hi)
 
     for edge, edge_color, pe, pec in zip(e, ec, ce, cec):
 
@@ -225,8 +225,8 @@ def dimer_hamiltonian(V, h,length = [4, 2]):
             ))
             edge_.append(p[0].tolist() + p[1].tolist())
         
-        op += nk.operator.DimerLocalOperator2(hi, l_op @ mat[0] + V * mat[0], edge_[0])
-        op += nk.operator.DimerLocalOperator2(hi, l_op @ mat[1] + V * mat[1], edge_[1])
+        op += nk.operator.DimerLocalOperator(hi, l_op @ mat[0] + V * mat[0], edge_[0])
+        op += nk.operator.DimerLocalOperator(hi, l_op @ mat[1] + V * mat[1], edge_[1])
     
     return op
 

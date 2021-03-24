@@ -33,7 +33,7 @@ class Sgd(AbstractOptimizer):
         if self.sigmoid_decay:
             self.iter += 1
             self._eta = self._learning_rate * self.sigmoid(self.iter)
-            print('eta = ', self.eta)
+            print('eta = ', self._eta)
 
         else:
             self._eta *= self._decay_factor

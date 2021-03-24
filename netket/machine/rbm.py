@@ -16,6 +16,7 @@ from .abstract_machine import AbstractMachine
 from .functions import graph_hex_4
 import numpy as _np
 from netket.machine.functions2 import new_hex
+import time
 
 from numba import (
     jit,
@@ -197,13 +198,21 @@ class RbmSpin(AbstractMachine):
         Returns:
             `out`
         """
+
+        assert x.ndim == 2, 'dimension of x must be 2'
+
         if self._autom is None:
             return self._bare_der_log(x, out)
         else:
+            s = time.time()
             self._outb = self._bare_der_log(x)
+            print('cal bare der log', time.time()-s)
+            s = time.time()
             if out is None:
-                out = _np.empty((x.shape[0], self._n_par), dtype=_np.complex128)
-            return _np.matmul(self._outb, self._der_mat_symm, out=out)
+                out = _np.empty((x.shape[0], self._n_par), dtype=_np.float64)
+            R = _np.matmul(self._outb, self._der_mat_symm, out=out)
+            print('matmal', time.time()-s)
+            return R
 
     def _bare_der_log(self, x, out=None):
 
@@ -211,7 +220,7 @@ class RbmSpin(AbstractMachine):
             raise RuntimeError("Invalid input shape, expected a 2d array")
 
         if out is None:
-            out = _np.empty((x.shape[0], self._n_bare_par), dtype=_np.complex128)
+            out = _np.empty((x.shape[0], self._n_bare_par), dtype=_np.float64)
 
         batch_size = x.shape[0]
         n_visible = x.shape[1]
@@ -609,6 +618,24 @@ class RbmDimer(RbmSpin):
 
         return out
 
+    def der_log(self, x, out=None):
+
+        assert x.ndim == 2, 'dimension of x must be 2'
+
+        batch_size = x.shape[0]
+
+        if self._autom is None:
+            return self._bare_der_log(x, out)
+        else:
+            s = time.time()
+            T_x = x[:,self._autom]
+            tanh = _np.tanh(T_x.dot(self._ws))
+            out = _np.einsum('ijk,ijl->ikl',T_x, tanh).reshape(batch_size,-1)
+
+            print('matmal', time.time()-s)
+            return out
+    
+
 
     def _bare_der_log(self, x, out=None):
 
@@ -616,7 +643,7 @@ class RbmDimer(RbmSpin):
             raise RuntimeError("Invalid input shape, expected a 2d array")
 
         if out is None:
-            out = _np.empty((x.shape[0], self._n_bare_par), dtype=_np.complex128)
+            out = _np.empty((x.shape[0], self._n_bare_par), dtype=_np.float64)
 
         batch_size = x.shape[0]
         n_visible = x.shape[1]
