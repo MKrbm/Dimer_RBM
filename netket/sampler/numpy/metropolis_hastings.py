@@ -167,7 +167,7 @@ class DimerMetropolisHastings(MetropolisHastings):
 
             # Propose a new state using the transition kernel
         # start = time.time()
-        accepted = _t_kernel(_state, _state1, _log_prob_corr, _w, _r, self.sweep_size)
+        accepted = _t_kernel(_state, _state1, _w, _r, self.sweep_size)
         # print(_state.dtype)
         # print('transition took :' ,time.time()-start)
         

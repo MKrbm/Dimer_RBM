@@ -3,7 +3,7 @@ import numpy as np
 
 n_samples = int(1e6)
 n_samples_RBM = 2000 # number of sample using with montecarlo
-length = [10, 10]
+length = [4, 4]
 alpha = 1
 n_chains = 1
 n_discard = 300
