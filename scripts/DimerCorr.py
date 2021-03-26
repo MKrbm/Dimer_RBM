@@ -4,7 +4,7 @@ parentdir = os.path.dirname(currentdir)
 sys.path.append(parentdir)
 import numpy as np
 import netket as nk
-import functions as f
+from scripts import functions as f
 
 
 def Dimer_Corr(h, V, length,t_list, n_samples, a):

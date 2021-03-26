@@ -35,36 +35,6 @@ def _local_values_impl(op, machine, v, log_vals, out):
 
     v_primes, mels = op.get_conn_flattened(_np.asarray(v), sections)
 
-
-    # index = hexagon.is_dimer_basis(v_primes)
-    # print(index)
-
-
-    # m_v_primes = v_primes[index]
-    # m_mels = mels[index]
-
-    # section_index = _np.zeros(v_primes.shape[0], dtype=bool)
-    # section_index[sections[:-1]] = True
-
-    # m_section_index = section_index[index]
-    # _m_sections = _np.where(m_section_index == True)[0]
-    # m_sections = _np.zeros_like(sections)
-    # m_sections[:-1] = _m_sections
-    # m_sections[-1] = m_v_primes.shape[0]
-
-
-
-
-
-
-
-    # log_val_primes = machine.log_val(m_v_primes)
-    # _local_values_kernel(
-    #     _np.asarray(log_vals), _np.asarray(log_val_primes), m_mels, m_sections, out
-    # )
-
-
-
     log_val_primes = machine.log_val(v_primes)
 
     _local_values_kernel(
@@ -106,6 +76,7 @@ def whosdaddy():
     return inspect.stack()[2][3]
 
 
+import time
 
 
 def local_values(op, machine, v, log_vals=None, out=None):
@@ -137,6 +108,8 @@ def local_values(op, machine, v, log_vals=None, out=None):
                 of the operator, otherwise a scalar.
     """
 
+
+    start = time.time()
     # True when this is the local_value of a densitymatrix times an operator (observable)
     is_op_times_op = isinstance(machine, DensityMatrix) and not isinstance(
         op, _LocalLiouvillian
@@ -163,5 +136,7 @@ def local_values(op, machine, v, log_vals=None, out=None):
         out = _np.empty(v.shape[0], dtype=_np.complex128)
 
     _impl(op, machine, v, log_vals, out)
+
+    print('time : ', time.time()-start)
 
     return out

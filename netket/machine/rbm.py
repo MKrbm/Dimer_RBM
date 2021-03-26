@@ -16,6 +16,7 @@ from .abstract_machine import AbstractMachine
 from .functions import graph_hex_4
 import numpy as _np
 from netket.machine.functions2 import new_hex
+import time
 
 from numba import (
     jit,
@@ -103,7 +104,7 @@ class RbmSpin(AbstractMachine):
             raise TypeError("dtype must be either float or complex")
 
         self._npdtype = _np.complex128 if dtype is complex else _np.float64
-        self._npdtype_state = _np.float64
+
         
         self._autom, self.n_hidden, alpha_symm = self._get_hidden(
             symmetry, hilbert, n_hidden, alpha
@@ -114,7 +115,7 @@ class RbmSpin(AbstractMachine):
         self._w = _np.empty((n, m), dtype=self._npdtype)
         self._a = _np.empty(n, dtype=self._npdtype) if use_visible_bias else None
         self._b = _np.empty(m, dtype=self._npdtype) if use_hidden_bias else None
-        self._r = _np.empty((1, m), dtype=self._npdtype_state)
+        self._r = _np.empty((1, m), dtype=self._npdtype)
 
         self._n_bare_par = (
             self._w.size
@@ -197,13 +198,21 @@ class RbmSpin(AbstractMachine):
         Returns:
             `out`
         """
+
+        assert x.ndim == 2, 'dimension of x must be 2'
+
         if self._autom is None:
             return self._bare_der_log(x, out)
         else:
+            s = time.time()
             self._outb = self._bare_der_log(x)
+            print('cal bare der log', time.time()-s)
+            s = time.time()
             if out is None:
-                out = _np.empty((x.shape[0], self._n_par), dtype=_np.complex128)
-            return _np.matmul(self._outb, self._der_mat_symm, out=out)
+                out = _np.empty((x.shape[0], self._n_par), dtype=_np.float64)
+            R = _np.matmul(self._outb, self._der_mat_symm, out=out)
+            print('matmal', time.time()-s)
+            return R
 
     def _bare_der_log(self, x, out=None):
 
@@ -211,7 +220,7 @@ class RbmSpin(AbstractMachine):
             raise RuntimeError("Invalid input shape, expected a 2d array")
 
         if out is None:
-            out = _np.empty((x.shape[0], self._n_bare_par), dtype=_np.complex128)
+            out = _np.empty((x.shape[0], self._n_bare_par), dtype=_np.float64)
 
         batch_size = x.shape[0]
         n_visible = x.shape[1]
@@ -547,6 +556,7 @@ class RbmDimer(RbmSpin):
         use_visible_bias=True,
         use_hidden_bias=True,
         symmetry=None,
+        reverse = False, 
         dtype=float,
         dimer_length = [2,4],
         ma = None,
@@ -554,6 +564,7 @@ class RbmDimer(RbmSpin):
 
         self.ma = ma
         self.hex = hexagon
+        self.reverse = reverse
 
         super().__init__(
             hilbert,
@@ -581,8 +592,7 @@ class RbmDimer(RbmSpin):
             A complex number when `x` is a vector and vector when `x` is a
             matrix.
         """
-        # print(x.dtype)
-        x = x.astype(dtype=self._npdtype_state)
+        x = x.astype(dtype=self._npdtype)
 
         
 
@@ -594,11 +604,60 @@ class RbmDimer(RbmSpin):
             out_ =  self._log_val_kernel(x, out, self._w, self._a, self._b, self._r)
             return out_
 
+    @staticmethod
+    @jit(nopython=True)
+    def _log_val_kernel(x, out, W, a, b, r):
+
+        if x.ndim != 2:
+            raise RuntimeError("Invalid input shape, expected a 2d array")
+
+        if out is None:
+            out = _np.empty(x.shape[0], dtype=_np.complex128)
+        r = x.dot(W)
+        _log_cosh_sum(r, out)
+
+        return out
+
+    def der_log(self, x, out=None):
+
+        assert x.ndim == 2, 'dimension of x must be 2'
+
+        batch_size = x.shape[0]
+
+        if self._autom is None:
+            return self._bare_der_log(x, out)
+        else:
+            s = time.time()
+            T_x = x[:,self._autom]
+            tanh = _np.tanh(T_x.dot(self._ws))
+            out = _np.einsum('ijk,ijl->ikl',T_x, tanh).reshape(batch_size,-1)
+
+            print('matmal', time.time()-s)
+            return out
+    
+
+
     def _bare_der_log(self, x, out=None):
 
-        out = super()._bare_der_log(x, out)
+        if x.ndim != 2:
+            raise RuntimeError("Invalid input shape, expected a 2d array")
 
-        # print('index2',self.hexagonal.is_dimer_basis2(x).all())
+        if out is None:
+            out = _np.empty((x.shape[0], self._n_bare_par), dtype=_np.float64)
+
+        batch_size = x.shape[0]
+        n_visible = x.shape[1]
+
+        i = 0
+
+        r = self._r
+        r = _np.dot(x, self._w)
+        r = _np.tanh(r)
+
+
+        t = out[:, i : i + self._w.size]
+        t.shape = (batch_size, self._w.shape[0], self._w.shape[1])
+        _np.einsum("ij,il->ijl", x, r, out=t)
 
         return out
 
@@ -624,10 +683,10 @@ class RbmDimer(RbmSpin):
             return None, m, m
         else:
             if symmetry is True:
-                autom = self.hex.autom
+                autom = self.hex.autom(reverse = self.reverse)
             else:
                 try:
-                    autom = self.hex.autom
+                    autom = self.hex.autom(sreverse = elf.reverse)
                     assert hilbert.size == autom.shape[1]
                 except:
                     raise RuntimeError("Cannot find a valid automorphism array.")

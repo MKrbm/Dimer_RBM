@@ -77,6 +77,6 @@ def MetropolisLocalPt(machine, n_replicas=16, sweep_size=None):
     return MetropolisHastingsPt(machine, _LocalKernel(machine), n_replicas, sweep_size)
 
 
-def DimerMetropolisLocal(machine, op, n_chains=16, sweep_size=None, length = [4,2]):
+def DimerMetropolisLocal(machine, op, n_chains=16, sweep_size=None, length = [4,2], kernel = 1):
 
-    return DimerMetropolisHastings(machine, _DimerLocalKernel(machine, op), n_chains, sweep_size, length)
+    return DimerMetropolisHastings(machine, _DimerLocalKernel(machine, op, kernel), n_chains, sweep_size, length)

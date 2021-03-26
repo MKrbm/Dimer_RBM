@@ -13,6 +13,8 @@ from scripts import Dimer_Dynamics
 
 if __name__ == "__main__":
 
+    print('job start')
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--h", help = "h",type=float)
     parser.add_argument("--q", help = "q",type=float)

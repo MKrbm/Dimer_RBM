@@ -6,7 +6,7 @@ from .metropolis_local import *
 from .metropolis_exchange import *
 from .metropolis_hamiltonian import *
 from .custom_sampler import *
-
+from .new_sampler import *
 from .exact_sampler import *
 
 from ..utils import jax_available
