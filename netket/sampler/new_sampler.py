@@ -58,6 +58,8 @@ class DimerMetropolisLocal_multi():
                 out.append(temp_out)
             else:
                 raise NameError('keyboardinterrupt')
+        
+        # print('# of accepted samples',self.sa_list[0]._accepted_samples)
 
         
         return np.concatenate(out, axis=0)

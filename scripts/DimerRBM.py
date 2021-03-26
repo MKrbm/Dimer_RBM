@@ -32,7 +32,7 @@ def Dimer_RBM(h, V, length, alpha, n_iter, n_samples, n_chains, n_discard , swee
     hex_ = nk.machine.new_hex(np.array(length))
 
     ma = nk.machine.RbmDimer(hi, hex_, alpha = alpha, symmetry = True
-                        ,use_hidden_bias = False, use_visible_bias = False, dtype=float)
+                        ,use_hidden_bias = False, use_visible_bias = False, dtype=float, reverse=True)
     ma.init_random_parameters(seed=1234)
 
 
@@ -58,7 +58,7 @@ def Dimer_RBM(h, V, length, alpha, n_iter, n_samples, n_chains, n_discard , swee
 # slight modification with large sample and large seep_size
 
     sweep_size = sweep_size * 3
-    n_samples = n_samples*3
+    n_samples = n_samples * 3
     n_iter = 100
     n_discard = 600
 
