@@ -9,7 +9,7 @@ n_chains = 1
 n_discard = 600
 a = 0 # direction of dimer when calculate DimerCorrelation
 t_list = np.linspace(0, 30, 201)
-n_iter = int(600)
+n_iter = int(100)
 n_jobs = -1
 sweep_size = 400
 

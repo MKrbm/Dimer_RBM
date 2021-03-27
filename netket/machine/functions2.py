@@ -21,6 +21,7 @@ class new_hex:
         self.a1 = self.a(np.float32(0))
         self.a2 =  self.a(np.pi*(5/3))
 
+        self.size = np.prod(l) * 2
 
         # definite lattice vector. If one change gage, this vectors will change correspondingly.
         self.b1 = self.a1 * 2
@@ -84,6 +85,8 @@ class new_hex:
         self.edges_from_hex , self.edges_color_from_hex = self.edges_from_hex_(l = self.all_hex_index, color=True, num =True)
         self.edges = np.sort(self.edges_from_hex[:,np.array([0,5,4]),:].reshape(-1,2),axis=1)
         self.edges_color = self.edges_color_from_hex[:,np.array([0,5,4])].reshape(-1)
+
+        self.translate_half_ = np.array([0.5, 0])
         
                     
         
@@ -301,7 +304,7 @@ class new_hex:
 
         '''
 
-        assert c.dtype == np.int, 'dtype of c must be int'
+        # assert c.dtype == np.int, 'dtype of c must be int'
 
         c_ = c.reshape(-1,2)
 
@@ -309,7 +312,7 @@ class new_hex:
 
 
 
-        translate_coors  = np.expand_dims(coors_, axis=0) + (c[:,0][:, None] * self.b1 + c[:,1][:, None] * self.b2)[:, None, :]
+        translate_coors  = np.expand_dims(coors_, axis=0) + (c_[:,0][:, None] * self.b1 + c_[:,1][:, None] * self.b2)[:, None, :]
 
         translate_coors = self.ProcessPeriodic(translate_coors)
 
@@ -337,7 +340,7 @@ class new_hex:
         return lattice_coor_array_prime.reshape(lattice_coor_array.shape)
 
     # @property
-    def autom(self, reverse=False):
+    def autom(self, reverse=False, half=False):
         coordinate = self.lattice_coor
 
         # return_array = self.coor_to_lattice_num(self.translation(coordinate, self.all_unit_cell))
@@ -346,6 +349,19 @@ class new_hex:
             return_array_coor_ = return_array_coor.copy()
             return_array_coor_ = self.reverse(return_array_coor_)
             return_array_coor = np.concatenate((return_array_coor, return_array_coor_),axis=0)
+
+        if half:
+            return_array_coor_prime = np.zeros((2,)+return_array_coor.shape)
+            return_array_coor_prime[0] = return_array_coor
+
+            half_array_coor = self.translation(return_array_coor, self.translate_half_)
+            return_array_coor_prime[1] = half_array_coor
+
+            z2 = np.ones((2, self.size))
+            z2[1] = self.get_z2()
+
+            return self.coor_to_lattice_num(return_array_coor_prime), z2
+
         
         return self.coor_to_lattice_num(return_array_coor)
 
@@ -404,6 +420,43 @@ class new_hex:
     @staticmethod
     def Rotation(theta):
         return np.array([[np.cos(theta), -np.sin(theta)],[np.sin(theta), np.cos(theta)]]).astype(np.float32)
+
+    
+    def get_z2(self):
+
+
+        c = self.translate_half_
+        color = self.edges_color
+        num_edges = self.edges
+        edges = self.lattice_num_to_coor(self.edges)
+        translated_edges = self.coor_to_lattice_num(self.translation(edges, c))
+        translated_color = self.get_edge_color(translated_edges)
+        z2_from = color * translated_color
+
+        search_index = [0]
+        finished_index = []
+
+        np.where(translated_edges == 0)[1]
+        z2 = np.zeros(self.size)
+        z2[0] = 1
+        while search_index:
+            n = search_index.pop(0)
+            conn_edge_num = np.where(translated_edges == n)[1]
+            temp = translated_edges[0,conn_edge_num]
+            temp_mask = np.where(temp != n)
+            conn_ind = temp[temp_mask]
+            # print(conn_ind)
+            conn_color = z2_from[0,conn_edge_num]
+            conn_color_prime = conn_color*z2[n]
+            z2[conn_ind] = conn_color_prime
+            finished_index.append(n)
+            for c in conn_ind:
+                if c not in finished_index:
+                    if c not in search_index:
+                        search_index.append(c)
+
+        return z2
+
 
 
 

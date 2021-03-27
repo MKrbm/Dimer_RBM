@@ -11,7 +11,6 @@ def Dimer_RBM(h, V, length, alpha, n_iter, n_samples, n_chains, n_discard , swee
 
 
     kernel = 1
-    n_iter = 300
     # sweep_size = 200
     decay_factor = 'sigmoid decay'  # or 'sigmoid decay'
     n_jobs = 12
@@ -53,6 +52,7 @@ def Dimer_RBM(h, V, length, alpha, n_iter, n_samples, n_chains, n_discard , swee
 
 
     gs.run(n_iter=n_iter, out=parentdir + '/log/'+name)
+    ma.save(parentdir + '/save/ma/'+name)
 
 
 # slight modification with large sample and large seep_size
