@@ -672,6 +672,7 @@ class RbmDimer(RbmSpin, AbstractMachine):
             symm_num = self._autom.shape[0]
 
             if self.half:
+                print('size of x : ', x.shape)
                 half_symm_num = int(symm_num/2)
                 s = time.time()
                 T_x_1 = self.translate_x(x, self._autom[:half_symm_num])

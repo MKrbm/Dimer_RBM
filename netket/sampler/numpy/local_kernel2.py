@@ -244,7 +244,8 @@ class _DimerLocalKernel_1:
         state_prime, mels = self.get_conn(state, sections[1:])
         n_conn = -sections[:-1] + sections[1:] - 1
 
-        for _ in range(sweep_size):
+        # for _ in range(2*sweep_size):
+        while True:
 
 
             # state_prime_, mels_ = self.get_conn(state, sections[1:])

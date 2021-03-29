@@ -12,7 +12,7 @@ def Dimer_RBM(h, V, length, alpha, n_iter, n_samples, n_chains, n_discard , swee
 
     kernel = 1
     # sweep_size = 200
-    decay_factor = 'sigmoid decay'  # or 'sigmoid decay'
+    decay_factor = 1  # or 'sigmoid decay'
     n_jobs = 12
     n_discard = 300
 

@@ -2,7 +2,7 @@ import numpy as np
 
 
 n_samples = int(1e6)
-n_samples_RBM = 2 * 10**3 # number of sample used for montecarlo
+n_samples_RBM = 2 * 10 ** 3 # number of sample used for montecarlo
 length = [4, 4]
 alpha = 1
 n_chains = 1

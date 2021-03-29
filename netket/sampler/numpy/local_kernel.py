@@ -256,6 +256,7 @@ class _DimerLocalKernel_1:
         
         N = 0
         for _ in range(sweep_size):
+        # while True:
             
 #             state_prime_, mels_ = self.get_conn(state, sections)
 #             n_conn_ = sections[0]-1
