@@ -68,7 +68,7 @@ class AbstractSampler(abc.ABC):
             samples[i] = self.__next__()
 
         # print('# of accepted samples',self._accepted_samples/n_samples) 
-        
+        # print(self._w.shape)
         return samples
 
 

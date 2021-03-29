@@ -20,6 +20,7 @@ import time
 
 from numba import (
     jit,
+    njit,
     float64,
     complex128,
 )
@@ -130,11 +131,12 @@ class RbmSpin(AbstractMachine):
             self._bs = self._b.view() if use_hidden_bias else None
             self._n_par = self._n_bare_par
         else:
-            self._der_mat_symm, self._n_par = self._build_der_mat(
-                use_visible_bias, use_hidden_bias, n, alpha_symm, self._autom
-            )
+            # self._der_mat_symm, self._n_par = self._build_der_mat(
+            #     use_visible_bias, use_hidden_bias, n, alpha_symm, self._autom
+            # )
 
             self._ws = _np.empty((n, alpha_symm), dtype=self._npdtype)
+            self._n_par = self._ws.size
             self._as = _np.empty(1, dtype=self._npdtype) if use_visible_bias else None
             self._bs = (
                 _np.empty(alpha_symm, dtype=self._npdtype) if use_hidden_bias else None
@@ -304,7 +306,7 @@ class RbmSpin(AbstractMachine):
 
         if self._autom is not None:
             self._set_bare_parameters(
-                self._a, self._b, self._w, self._as, self._bs, self._ws, self._autom
+                self._a, self._b, self._w, self._as, self._bs, self._ws, self._autom, self._z2
             )
 
     @staticmethod
@@ -545,7 +547,7 @@ def whoami():
 def whosdaddy():
     return inspect.stack()[2][3]
 
-class RbmDimer(RbmSpin):
+class RbmDimer(RbmSpin, AbstractMachine):
 
     def __init__(
         self,
@@ -557,6 +559,7 @@ class RbmDimer(RbmSpin):
         use_hidden_bias=True,
         symmetry=None,
         reverse = False, 
+        half = False,
         dtype=float,
         dimer_length = [2,4],
         ma = None,
@@ -565,17 +568,56 @@ class RbmDimer(RbmSpin):
         self.ma = ma
         self.hex = hexagon
         self.reverse = reverse
+        self.half = half
 
-        super().__init__(
-            hilbert,
-            n_hidden,
-            alpha,
-            use_visible_bias,
-            use_hidden_bias,
-            symmetry,
-            dtype,
+        AbstractMachine.__init__(self, hilbert, dtype=dtype)
+
+        n = hilbert.size
+
+        if dtype is not float and dtype is not complex:
+            raise TypeError("dtype must be either float or complex")
+
+        self._npdtype = _np.complex128 if dtype is complex else _np.float64
+
+        
+        self._autom, self.n_hidden, alpha_symm, self._z2 = self._get_hidden(
+            symmetry, hilbert, n_hidden, alpha
+        )
+
+        m = self.n_hidden
+
+        self._w = _np.empty((n, m), dtype=self._npdtype)
+        self._a = _np.empty(n, dtype=self._npdtype) if use_visible_bias else None
+        self._b = _np.empty(m, dtype=self._npdtype) if use_hidden_bias else None
+        self._r = _np.empty((1, m), dtype=self._npdtype)
+
+        self._n_bare_par = (
+            self._w.size
+            + (self._a.size if self._a is not None else 0)
+            + (self._b.size if self._b is not None else 0)
+        )
+        print(alpha_symm)
+
+        if symmetry is None or symmetry is False:
+            self._ws = self._w.view()
+            self._as = self._a.view() if use_visible_bias else None
+            self._bs = self._b.view() if use_hidden_bias else None
+            self._n_par = self._n_bare_par
+        else:
+            # self._der_mat_symm, self._n_par = self._build_der_mat(
+            #     use_visible_bias, use_hidden_bias, n, alpha_symm, self._autom
+            # )
+
+            self._ws = _np.empty((n, alpha_symm), dtype=self._npdtype)
+            self._n_par = self._ws.size
+            self._as = _np.empty(1, dtype=self._npdtype) if use_visible_bias else None
+            self._bs = (
+                _np.empty(alpha_symm, dtype=self._npdtype) if use_hidden_bias else None
             )
 
+            self._set_bare_parameters(
+                self._a, self._b, self._w, self._as, self._bs, self._ws, self._autom, self._z2
+            )
 
 
 
@@ -627,12 +669,33 @@ class RbmDimer(RbmSpin):
         if self._autom is None:
             return self._bare_der_log(x, out)
         else:
-            s = time.time()
-            T_x = x[:,self._autom]
-            tanh = _np.tanh(T_x.dot(self._ws))
-            out = _np.einsum('ijk,ijl->ikl',T_x, tanh).reshape(batch_size,-1)
+            symm_num = self._autom.shape[0]
 
-            print('matmal', time.time()-s)
+            if self.half:
+                half_symm_num = int(symm_num/2)
+                s = time.time()
+                T_x_1 = self.translate_x(x, self._autom[:half_symm_num])
+                # T_x_1 = x[:,self._autom[:half_symm_num]]
+                T_x_2 = self.translate_x(x * self._z2[1], self._autom[half_symm_num:])
+                # T_x_2 = (x* self._z2[1])[:, self._autom[half_symm_num:]] 
+                print('matmal', time.time()-s)
+                s = time.time()
+                tanh_1 = _np.tanh(T_x_1.dot(self._ws))
+                tanh_2 = _np.tanh(T_x_2.dot(self._ws))
+                print('cal tan', time.time()-s)
+                s = time.time()
+                out1 = _np.einsum('ijk,ijl->ikl',T_x_1, tanh_1)
+                out = (out1 + _np.einsum('ijk,ijl->ikl',T_x_2, tanh_2)).reshape(batch_size,-1)
+                print('cal output', time.time()-s)
+                # out = _np.einsum('ijk,ijl->ikl',T_x, tanh).reshape(batch_size,-1)
+            else:
+                s = time.time()
+                T_x = self.translate_x(x, self._autom)
+                tanh = _np.tanh(T_x.dot(self._ws))
+                out = _np.einsum('ijk,ijl->ikl',T_x, tanh).reshape(batch_size,-1)
+
+                print('matmal', time.time()-s)
+                
             return out
     
 
@@ -663,6 +726,8 @@ class RbmDimer(RbmSpin):
 
 
     def _get_hidden(self, symmetry, hilbert, n_hidden, alpha):
+
+        z2 = None
         if (symmetry is None) or (symmetry is False):
             if alpha is None:
                 m = n_hidden
@@ -683,7 +748,13 @@ class RbmDimer(RbmSpin):
             return None, m, m
         else:
             if symmetry is True:
-                autom = self.hex.autom(reverse = self.reverse)
+                
+                if self.half:
+                    temp = self.hex.autom(reverse = self.reverse, half = self.half)
+                    autom = _np.vstack(temp[0])
+                    z2 = temp[1]
+                else:
+                    autom = self.hex.autom(reverse = self.reverse)
             else:
                 try:
                     autom = self.hex.autom(sreverse = elf.reverse)
@@ -703,7 +774,53 @@ class RbmDimer(RbmSpin):
                 )
             m = int(alphasym * autom.shape[0])
 
-            return autom, m, alphasym
+            return autom, m, alphasym, z2
+
+    @staticmethod
+    @jit
+    def _set_bare_parameters(a, b, W, a_s, b_s, W_s, permtable, z2):
+
+        perm_size = permtable.shape[0]
+        half = False
+
+        if z2 is not None:
+            half = True
+
+        if a is not None:
+            a.fill(a_s)
+
+        if b is not None:
+            for j in range(b.shape[0]):
+                jsymm = int(_np.floor(j / perm_size))
+                b[j] = b_s[jsymm]
+
+        if half:
+            # pass
+            for j in range(W.shape[1]):
+                jsymm = int(_np.floor(j / perm_size))
+                num = j % perm_size
+                z2_num = num // int(perm_size/2)
+                for i in range(W.shape[0]):
+                    W[i, j] = W_s[permtable[num][i], jsymm] * z2[z2_num,i]
+        else:
+            for j in range(W.shape[1]):
+                jsymm = int(_np.floor(j / perm_size))
+                num = j % perm_size
+                for i in range(W.shape[0]):
+                    W[i, j] = W_s[permtable[num][i], jsymm]
+
+    @staticmethod
+    @njit
+    def translate_x(x, autom):
+        
+        out = _np.empty((x.shape[0], autom.shape[0], x.shape[1]), dtype=x.dtype)
+        for l in range(x.shape[0]):
+            out_l = out[l]
+            x_l = x[l]
+            for i in range(autom.shape[0]):
+                for j in range(x.shape[1]):
+                    out_l[i, j] = x_l[autom[i, j]]
+        return out
 
 
 class RbmMultiVal(RbmSpin):

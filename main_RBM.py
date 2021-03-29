@@ -25,6 +25,8 @@ if __name__ == "__main__":
     q = 1 if (not args.q) and (args.q != 0) else round(args.q,2)
 
     V = h * q
+    # h = 0
+    # V = 1
 
     Dimer_RBM(h = h, V = V, length = length, alpha = alpha, n_iter = n_iter, 
         n_samples = n_samples_RBM, n_chains = n_chains, n_discard = n_discard, sweep_size = sweep_size)

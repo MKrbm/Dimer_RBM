@@ -64,6 +64,12 @@ class MetropolisHastings(AbstractSampler):
             raise ValueError("Expected a positive integer for sweep_size ")
 
     def reset(self, init_random=False):
+
+        if self.machine.ma:
+            self._w = _np.concatenate((self.machine._w, self.machine.ma._w), axis=1)
+        else:
+            self._w = self.machine._w
+        self._r = self.machine._r
         if init_random:
             self._kernel.random_state(self._state)
         self._log_values = self.machine.log_val(self._state, out=self._log_values)
@@ -144,6 +150,12 @@ class DimerMetropolisHastings(MetropolisHastings):
     def __init__(self, machine, kernel, n_chains=16, sweep_size=None, length = [4,2]):
         
         super().__init__(machine, kernel, n_chains, sweep_size)
+
+        if self.machine.ma:
+            self._w = _np.concatenate((self.machine._w, self.machine.ma._w), axis=1)
+        else:
+            self._w = self.machine._w
+        self._r = self.machine._r
         # hexagon = _nk.machine.new_hex(l = _np.array(length))
         # self.e, self.ec, self.cpe, self.cpc = hexagon.for_hamiltonian()
     
@@ -159,15 +171,13 @@ class DimerMetropolisHastings(MetropolisHastings):
         _machine_pow = self._machine_pow
         _t_kernel = self._kernel.transition
 
-        _w = self.machine._w
-        _r = self.machine._r
 
 
         # for sweep in range(self.sweep_size):
 
             # Propose a new state using the transition kernel
         # start = time.time()
-        accepted = _t_kernel(_state, _state1, _w, _r, self.sweep_size)
+        accepted = _t_kernel(_state, _state1, self._w, None, self.sweep_size)
         # print(_state.dtype)
         # print('transition took :' ,time.time()-start)
         

@@ -273,5 +273,7 @@ class AbstractVariationalDriver(abc.ABC):
         Args:
             :param dp: the gradient
         """
-        self._machine.parameters = self._optimizer.update(dp, self._machine.parameters)
+        update_ = self._optimizer.update(dp, self._machine.parameters)
+        print(update_[0])
+        self._machine.parameters = update_
         self._step_count += 1
