@@ -40,7 +40,7 @@ def Dimer_RBM(h, V, length, alpha, n_iter, n_samples, n_chains, n_discard , swee
     sa_mul = nk.sampler.DimerMetropolisLocal_multi(machine=ma, op=op_transition1
         , length = length, n_chains=n_chains, sweep_size = sweep_size, kernel = 1, n_jobs=n_jobs)
 
-    sr = nk.optimizer.SR(ma, diag_shift=0)
+    sr = nk.optimizer.SR(ma, diag_shift=1e-2)
     opt = nk.optimizer.Sgd(ma, learning_rate=0.05, decay_factor = decay_factor ,N = n_iter)
 
     gs = nk.Vmc(

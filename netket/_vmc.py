@@ -1,6 +1,7 @@
 import math
 
 import netket as _nk
+import numpy as _np
 
 from .operator import local_values as _local_values
 from netket.stats import (
@@ -12,6 +13,8 @@ from netket.stats import (
 from netket.vmc_common import info, tree_map
 from netket.abstract_variational_driver import AbstractVariationalDriver
 import time
+import multiprocessing as mp
+import copy
 
 
 
@@ -161,25 +164,39 @@ class Vmc(AbstractVariationalDriver):
         # print(whoami(), whosdaddy())
 
         s = time.time()
-        eloc, self._loss_stats = self._get_mc_stats(self._ham)
-        print('get_mc_stats', time.time()-s)
+        # eloc, self._loss_stats = self._get_mc_stats(self._ham)
+        # print('get_mc_stats', time.time()-s)
 
-        # Center the local energy
-        eloc -= _mean(eloc)
+        # # Center the local energy
+        # eloc -= _mean(eloc)
 
         samples_r = self._samples.reshape((-1, self._samples.shape[-1]))
-        eloc_r = eloc.reshape(-1, 1)
+        # eloc_r = eloc.reshape(-1, 1)
 
         # Perform update
 
         if self._sr:
             s = time.time()
             # When using the SR (Natural gradient) we need to have the full jacobian
-            self._grads, self._jac = self._machine.vector_jacobian_prod(
-                samples_r, eloc_r / self._n_samples, self._grads, return_jacobian=True
-            )
-            print('cal O and jac ', time.time()-s)
-            s = time.time()
+
+
+            # grads, jac = self._machine.vector_jacobian_prod(
+            #     samples_r.astype(_np.int8), eloc_r / self._n_samples, self._grads, return_jacobian=True
+            # )
+            # 
+            # s = time.time()
+
+
+            self._grads, self._jac, eloc = self.SR_process_mul(samples_r.astype(_np.int8))
+
+            loc = eloc.reshape(self._samples.shape[0:2])
+            self._loss_stats = _statistics(loc.T)
+
+            # grads, jac = self.SR_process(samples_r.astype(_np.int8), eloc_r)
+
+            # print(self._grads - grads)
+            # print(self._jac - jac )
+            print('--->> cal O and jac ', time.time()-s)
 
             self._grads = tree_map(_sum_inplace, self._grads)
 
@@ -248,6 +265,72 @@ class Vmc(AbstractVariationalDriver):
             ]
         ]
         return "\n{}".format(" " * 3 * (depth + 1)).join([str(self)] + lines)
+
+    def SR_process(self, samples, eloc):
+        n_samples = eloc.shape[0]
+
+        grads, jac =  self._machine.vector_jacobian_prod(
+                samples.astype(_np.int8), eloc/n_samples, return_jacobian=True
+            )
+
+        print(grads, jac)
+
+        return grads, jac
+
+    
+    @staticmethod
+    def run_(op, ma, samples ,qout):
+        try:
+
+            eloc = _local_values(op, ma, samples).reshape(-1,1)
+            eloc_ = eloc - _mean(eloc)
+
+            n_samples = eloc.shape[0]
+
+            out =  ma.vector_jacobian_prod(
+                    samples.astype(_np.int8), eloc_/n_samples, return_jacobian=True
+                )
+            
+            # out = vmc.SR_process(samples, eloc)
+            qout.put(out + (eloc,))
+        
+        except KeyboardInterrupt:
+            print('Received keyboardinterrupt\n')
+            qout.put(None)
+
+    def SR_process_mul(self, samples):
+        queue = []
+        process = []
+        n_samples = samples.shape[0]
+        n_each = int(n_samples/self._sampler.n_jobs)
+        # print(eloc)
+        for i in range(self._sampler.n_jobs):
+            queue.append(mp.Queue())
+            sample_r = samples[i*n_each : (i+1) * n_each].copy()
+            p = mp.Process(target=self.run_, args=(copy.copy(self._ham), copy.copy(self._machine), sample_r ,queue[i]))
+            # out = self.run_(copy.copy(self._machine), sample_r, eloc_r , None)
+            p.start()
+            process.append(p)
+        
+        
+        out1 = []
+        out2 = []
+        out3 = []
+
+        for i in range(self._sampler.n_jobs):
+            temp_out = queue[i].get()
+
+            if temp_out is not None:
+                out1.append(temp_out[0])
+                out2.append(temp_out[1])
+                out3.append(temp_out[2])
+            else:
+                raise NameError('keyboardinterrupt')
+        
+        # print('# of accepted samples',self.sa_list[0]._accepted_samples)
+
+        
+        return _np.stack(out1).mean(axis=0), _np.vstack(out2), _np.vstack(out3)
 
 import inspect
 import os.path

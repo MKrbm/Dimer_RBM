@@ -663,7 +663,7 @@ class RbmDimer(RbmSpin, AbstractMachine):
     def der_log(self, x, out=None):
 
         assert x.ndim == 2, 'dimension of x must be 2'
-
+        assert x.dtype == _np.int8, 'x.dtype should be np.int8'
         batch_size = x.shape[0]
 
         if self._autom is None:
@@ -672,23 +672,32 @@ class RbmDimer(RbmSpin, AbstractMachine):
             symm_num = self._autom.shape[0]
 
             if self.half:
-                print('size of x : ', x.shape)
+                # print('size of x : ', x.shape)
                 half_symm_num = int(symm_num/2)
                 s = time.time()
-                T_x_1 = self.translate_x(x, self._autom[:half_symm_num])
-                # T_x_1 = x[:,self._autom[:half_symm_num]]
-                T_x_2 = self.translate_x(x * self._z2[1], self._autom[half_symm_num:])
-                # T_x_2 = (x* self._z2[1])[:, self._autom[half_symm_num:]] 
-                print('matmal', time.time()-s)
+
+                ws = self._ws.astype(_np.float32)
+
+                T_x_1 = _np.empty((x.shape[0], half_symm_num, x.shape[1]), dtype=_np.float32)
+                T_x_2 = _np.empty_like(T_x_1)
+
+
+                T_x_1[:,:,:] = self.translate_x(x, self._autom[:half_symm_num])
+                T_x_2[:,:,:] = self.translate_x(x * self._z2[1], self._autom[half_symm_num:])
+
+                
+                # print('     matmal', time.time()-s)
                 s = time.time()
-                tanh_1 = _np.tanh(T_x_1.dot(self._ws))
-                tanh_2 = _np.tanh(T_x_2.dot(self._ws))
-                print('cal tan', time.time()-s)
+                tanh_1 = _np.tanh(T_x_1.dot(ws))
+                tanh_2 = _np.tanh(T_x_2.dot(ws))
+
+                # print('     cal tan', time.time()-s)
                 s = time.time()
                 out1 = _np.einsum('ijk,ijl->ikl',T_x_1, tanh_1)
                 out = (out1 + _np.einsum('ijk,ijl->ikl',T_x_2, tanh_2)).reshape(batch_size,-1)
-                print('cal output', time.time()-s)
+                # print('     cal output', time.time()-s)
                 # out = _np.einsum('ijk,ijl->ikl',T_x, tanh).reshape(batch_size,-1)
+
             else:
                 s = time.time()
                 T_x = self.translate_x(x, self._autom)
@@ -753,7 +762,7 @@ class RbmDimer(RbmSpin, AbstractMachine):
                 if self.half:
                     temp = self.hex.autom(reverse = self.reverse, half = self.half)
                     autom = _np.vstack(temp[0])
-                    z2 = temp[1]
+                    z2 = temp[1].astype(_np.int8)
                 else:
                     autom = self.hex.autom(reverse = self.reverse)
             else:
@@ -811,16 +820,13 @@ class RbmDimer(RbmSpin, AbstractMachine):
                     W[i, j] = W_s[permtable[num][i], jsymm]
 
     @staticmethod
-    @njit
     def translate_x(x, autom):
         
-        out = _np.empty((x.shape[0], autom.shape[0], x.shape[1]), dtype=x.dtype)
-        for l in range(x.shape[0]):
-            out_l = out[l]
-            x_l = x[l]
-            for i in range(autom.shape[0]):
-                for j in range(x.shape[1]):
-                    out_l[i, j] = x_l[autom[i, j]]
+        # out = _np.empty((x.shape[0], autom.shape[0], x.shape[1]), dtype=x.dtype)
+
+        x_t = x.T.copy()
+        out = x_t[autom]
+        out = out.transpose((2,0,1))
         return out
 
 

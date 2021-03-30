@@ -75,7 +75,6 @@ class AbstractMachine(abc.ABC):
 
             s = time.time()
             jacobian = self.der_log(x)
-            print('     cal jacobian ',time.time()-s)
 
             s = time.time()
             if conjugate:
@@ -83,7 +82,6 @@ class AbstractMachine(abc.ABC):
             else:
                 out = _np.dot(jacobian.transpose(), vec.conjugate(), out)
             
-            print('     cal F', time.time()-s)
 
         out = out.reshape(-1)
 
