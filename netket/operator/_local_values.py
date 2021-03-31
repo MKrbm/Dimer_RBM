@@ -55,7 +55,7 @@ def _local_values_impl(op, machine, v, log_vals, out):
     r = V.dot(machine._w)
     tan = _np.tanh(r)
 
-    # print('     prepare getting local values', time.time()-s)
+    print('     prepare getting local values', time.time()-s)
 
 
     out[:] = get_local_value(
@@ -73,7 +73,7 @@ def _local_values_impl(op, machine, v, log_vals, out):
         op._acting_on
     )
 
-    # print('     obtained local values',time.time()-s)
+    print('     obtained local values',time.time()-s)
 
     # v_primes, mels = op.get_conn_flattened(_np.asarray(v), sections)
 

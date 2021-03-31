@@ -36,6 +36,12 @@ def Dimer_RBM(h, V, length, alpha, n_iter, n_samples, n_chains, n_discard , swee
                         ,use_hidden_bias = False, use_visible_bias = False, dtype=float, reverse=True, half=True)
     ma.init_random_parameters(seed=1234)
 
+    try:
+        ma.load(parentdir + '/save/ma/'+name)
+        print('load saved params')
+    except:
+        pass
+
 
     sa_mul = nk.sampler.DimerMetropolisLocal_multi(machine=ma, op=op_transition1
         , length = length, n_chains=n_chains, sweep_size = sweep_size, kernel = 1, n_jobs=n_jobs)
@@ -55,6 +61,8 @@ def Dimer_RBM(h, V, length, alpha, n_iter, n_samples, n_chains, n_discard , swee
 
     gs.run(n_iter=n_iter, out=parentdir + '/log/'+name)
     ma.save(parentdir + '/save/ma/'+name)
+
+
 
 
 # slight modification with large sample and large seep_size

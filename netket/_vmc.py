@@ -164,14 +164,14 @@ class Vmc(AbstractVariationalDriver):
         # print(whoami(), whosdaddy())
 
         s = time.time()
-        # eloc, self._loss_stats = self._get_mc_stats(self._ham)
-        # print('get_mc_stats', time.time()-s)
+        eloc, self._loss_stats = self._get_mc_stats(self._ham)
+        print('get_mc_stats', time.time()-s)
 
-        # # Center the local energy
-        # eloc -= _mean(eloc)
+        # Center the local energy
+        eloc -= _mean(eloc)
 
         samples_r = self._samples.reshape((-1, self._samples.shape[-1]))
-        # eloc_r = eloc.reshape(-1, 1)
+        eloc_r = eloc.reshape(-1, 1)
 
         # Perform update
 
@@ -180,17 +180,14 @@ class Vmc(AbstractVariationalDriver):
             # When using the SR (Natural gradient) we need to have the full jacobian
 
 
-            # grads, jac = self._machine.vector_jacobian_prod(
+            # self._grads, self._jac = self._machine.vector_jacobian_prod(
             #     samples_r.astype(_np.int8), eloc_r / self._n_samples, self._grads, return_jacobian=True
             # )
             # 
             # s = time.time()
 
 
-            self._grads, self._jac, eloc = self.SR_process_mul(samples_r.astype(_np.int8))
-
-            loc = eloc.reshape(self._samples.shape[0:2])
-            self._loss_stats = _statistics(loc.T)
+            self._grads, self._jac = self.SR_process_mul(samples_r.astype(_np.int8), eloc_r)
 
             # grads, jac = self.SR_process(samples_r.astype(_np.int8), eloc_r)
 
@@ -279,26 +276,24 @@ class Vmc(AbstractVariationalDriver):
 
     
     @staticmethod
-    def run_(op, ma, samples ,qout):
+    def run_(ma, samples, eloc, qout):
         try:
-
-            eloc = _local_values(op, ma, samples).reshape(-1,1)
-            eloc_ = eloc - _mean(eloc)
-
+            s = time.time()
             n_samples = eloc.shape[0]
 
             out =  ma.vector_jacobian_prod(
-                    samples.astype(_np.int8), eloc_/n_samples, return_jacobian=True
+                    samples.astype(_np.int8), eloc/n_samples, return_jacobian=True
                 )
+            # print('cal jacobian', time.time()-s)
             
             # out = vmc.SR_process(samples, eloc)
-            qout.put(out + (eloc,))
+            qout.put(out)
         
         except KeyboardInterrupt:
             print('Received keyboardinterrupt\n')
             qout.put(None)
 
-    def SR_process_mul(self, samples):
+    def SR_process_mul(self, samples, eloc):
         queue = []
         process = []
         n_samples = samples.shape[0]
@@ -307,7 +302,8 @@ class Vmc(AbstractVariationalDriver):
         for i in range(self._sampler.n_jobs):
             queue.append(mp.Queue())
             sample_r = samples[i*n_each : (i+1) * n_each].copy()
-            p = mp.Process(target=self.run_, args=(copy.copy(self._ham), copy.copy(self._machine), sample_r ,queue[i]))
+            eloc_r = eloc[i*n_each : (i+1) * n_each].copy()
+            p = mp.Process(target=self.run_, args=(self._machine, sample_r, eloc_r ,queue[i]))
             # out = self.run_(copy.copy(self._machine), sample_r, eloc_r , None)
             p.start()
             process.append(p)
@@ -315,7 +311,6 @@ class Vmc(AbstractVariationalDriver):
         
         out1 = []
         out2 = []
-        out3 = []
 
         for i in range(self._sampler.n_jobs):
             temp_out = queue[i].get()
@@ -323,14 +318,13 @@ class Vmc(AbstractVariationalDriver):
             if temp_out is not None:
                 out1.append(temp_out[0])
                 out2.append(temp_out[1])
-                out3.append(temp_out[2])
             else:
                 raise NameError('keyboardinterrupt')
         
         # print('# of accepted samples',self.sa_list[0]._accepted_samples)
 
         
-        return _np.stack(out1).mean(axis=0), _np.vstack(out2), _np.vstack(out3)
+        return _np.stack(out1).mean(axis=0), _np.vstack(out2)
 
 import inspect
 import os.path

@@ -675,21 +675,25 @@ class RbmDimer(RbmSpin, AbstractMachine):
                 # print('size of x : ', x.shape)
                 half_symm_num = int(symm_num/2)
                 s = time.time()
+                # print(x.shape)
 
                 ws = self._ws.astype(_np.float32)
 
-                T_x_1 = _np.empty((x.shape[0], half_symm_num, x.shape[1]), dtype=_np.float32)
-                T_x_2 = _np.empty_like(T_x_1)
+                # T_x_1 = _np.empty((x.shape[0], half_symm_num, x.shape[1]), dtype=_np.float32)
+                # T_x_2 = _np.empty_like(T_x_1)
 
 
-                T_x_1[:,:,:] = self.translate_x(x, self._autom[:half_symm_num])
-                T_x_2[:,:,:] = self.translate_x(x * self._z2[1], self._autom[half_symm_num:])
+                # T_x_1[:,:,:] = self.translate_x(x, self._autom[:half_symm_num])
+                # T_x_2[:,:,:] = self.translate_x(x * self._z2[1], self._autom[half_symm_num:])
+
+                T_x_1 = self.translate_x(x, self._autom[:half_symm_num])
+                T_x_2 = self.translate_x(x * self._z2[1], self._autom[half_symm_num:])
 
                 
                 # print('     matmal', time.time()-s)
                 s = time.time()
-                tanh_1 = _np.tanh(T_x_1.dot(ws))
-                tanh_2 = _np.tanh(T_x_2.dot(ws))
+                tanh_1 = _np.tanh(T_x_1.astype(_np.float32).dot(ws))
+                tanh_2 = _np.tanh(T_x_2.astype(_np.float32).dot(ws))
 
                 # print('     cal tan', time.time()-s)
                 s = time.time()
