@@ -56,7 +56,7 @@ class new_dynamics:
     
     def dynamics(self, X, num):
         
-        
+        # assert X.dtype == np.int8
         
         
         return self._dynamics(
@@ -105,6 +105,7 @@ class new_dynamics:
         X = X.astype(np.int8)
         T = np.zeros(batch_size)
         t_array = np.zeros((num, batch_size))
+        _x_prime = _x_prime.astype(np.int8)
         
         
 

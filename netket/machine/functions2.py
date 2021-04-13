@@ -457,6 +457,33 @@ class new_hex:
 
         return z2
 
+    def num_to_state(self, n):
+        L = self.size
+        state = np.zeros(L, dtype=np.int8)
+        state = num_to_state_kernel(state, n, L)
+
+        return state
+
+
+
+    def get_all_state(self):
+        N = 2 ** self.size
+        L = self.size
+        state = np.zeros((N, L), dtype=np.int8)
+
+        return get_all_state_kernel(state, N, L)
+
+
+
+    
+
+def list_up_states(L):
+
+    N = 2 ** L
+
+    state = np.zeros((N, L), dtype=np.int8)
+
+    return get_all_state_kernel(state, N, L)
 
 
 
@@ -465,3 +492,22 @@ class new_hex:
 
 
 
+
+
+
+
+
+@njit
+def num_to_state_kernel(state, n,L):
+    for i in range(L):
+        a = n // 2**(L-i-1)
+        state[i] = a
+        n -= 2**(L-i-1)*a
+    return state*2-1
+
+@njit
+def get_all_state_kernel(state, N,L):
+    for n in range(N):
+        state[n] = num_to_state_kernel(state[n], n, L)   
+
+    return state

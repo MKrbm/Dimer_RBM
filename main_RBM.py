@@ -24,6 +24,8 @@ if __name__ == "__main__":
     h = 1 if (not args.h) and (args.h != 0) else round(args.h,2)
     q = 1 if (not args.q) and (args.q != 0) else round(args.q,2)
 
+
+
     V = h * q
     # h = 0
     # V = 1

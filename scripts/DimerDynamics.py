@@ -5,11 +5,18 @@ sys.path.append(parentdir)
 import numpy as np
 import netket as nk
 from scripts import functions as f
-
+import scripts.dynamics as Dynamics
+import time
 
 def Dimer_Dynamics(h, V, length,alpha,  t_list, n_jobs = -1, n_chains = 10, n_samples = 100):
 
     name = 'h={}V={}l={}'.format(h, V, length)
+
+    # create save folder.
+    if not os.path.exists(parentdir + '/save/dynamics/'+name):
+        os.makedirs(parentdir + '/save/dynamics/'+name)
+
+    S = time.time()
 
     if n_jobs == -1:
         try:
@@ -22,50 +29,43 @@ def Dimer_Dynamics(h, V, length,alpha,  t_list, n_jobs = -1, n_chains = 10, n_sa
     hi = nk.hilbert.Spin(s=0.5, graph=g)
 
     op = f.dimer_hamiltonian(h, V,np.array(length))
-    op_transition = f.dimer_flip(length = np.array(length))
+    op_transition = f.dimer_flip1(length = np.array(length))
     hex_ = nk.machine.new_hex(np.array(length))
 
 
     ma = nk.machine.RbmDimer(hi, hex_, alpha = alpha, symmetry = True
-                        ,use_hidden_bias = False, use_visible_bias = False, dtype=float)
+                        ,use_hidden_bias = False, use_visible_bias = False, dtype=float, reverse=True, half=True)
     
     ma.load(parentdir + '/save/ma/'+name)
+    print('loaded machine',time.time()-S)
+
+    sweep_size = 400
+    sa_mul = nk.sampler.DimerMetropolisLocal_multi(machine=ma, op=op_transition, length = length, n_chains=1, sweep_size = sweep_size, kernel = 1, n_jobs=n_jobs)
+    sa_mul.reset()
+    sa_mul.generate_samples(1000) # discard the begginings of metropolis sampling.
+    print('discard samples',time.time()-S)
 
 
-    sa = nk.sampler.DimerMetropolisLocal(machine=ma, op=op_transition, length = length, n_chains=n_chains, sweep_size = 70)
-    sa.generate_samples(1000) # discard the begginings of metropolis sampling.
-    print('discard samples')
-    samples_state = sa.generate_samples(int(n_samples / n_chains))
-    samples_state = samples_state.reshape(-1, ma.hilbert.size)
+    '''
 
-    print('prepared initial samples')
+    Split samples into 10 block since memory problem.
 
-    d = f.dynamics2(op, ma)
+    '''
+    n_max = 10
+    n_samples_ = int(n_samples/n_max)
+    for n in range(n_max):
 
-    P = d.dynamics(samples_state, t_list, 0) 
-    print(P.shape)
-    # np.save(parentdir + '/save/dynamics/'+name + 'n={:.1e}.npy'.format(n_samples), P)
+        samples_state = sa_mul.generate_samples(int(n_samples_ / n_chains))
+        samples_state = samples_state.reshape(-1, ma.hilbert.size)
 
-    # d = f.dynamics3(
-    #         op._local_states,
-    #         op._basis,
-    #         op._constant,
-    #         op._diag_mels,
-    #         op._n_conns,  
-    #         op._mels,
-    #         op._x_prime,
-    #         op._acting_on,
-    #         op._acting_size,
-    #         ma
-    #         )
+        print('prepared initial samples', time.time()-S)
 
-    # P_list = []
+        d = Dynamics.new_dynamics(op, ma)
 
-    # num = int(n_samples/200)
-    # for n in range(num):
-    #     P_list.append(d.dynamics(samples_state[n*(200) : (n+1)*(200)], t_list, 0) )
+        P = d.multiprocess(samples_state, 500, n_jobs) 
+        print('prepaired montecarlo sampling', time.time()-S)
+        # print(P.shape)
+        np.save(parentdir + '/save/dynamics/'+name + '/P_n={:.1e}_{}.npy'.format(n_samples_, n), P[0])
+        np.save(parentdir + '/save/dynamics/'+name + '/T_n={:.1e}_{}.npy'.format(n_samples_, n), P[1])
 
-    # P = np.vstack(P_list)
-    # print(P.shape)
-    # print('saving dynamics')
-    # # np.save(parentdir + '/save/dynamics/'+name + 'n={:.1e}.npy'.format(n_samples), P)
+        print('done {}/{}'.format(n+1,n_max))

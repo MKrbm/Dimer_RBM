@@ -34,6 +34,21 @@ def return_dimer_operator(hilbert , edges, colors):
     return return_list 
 
 
+@njit
+def process_P(P, T, t_list):
+    mels_list = np.zeros((t_list.shape[0],)+P.shape[1:] , dtype=P.dtype)
+    t_list_ = t_list.reshape(-1,1)
+
+    S = 0
+    for n in range(T.shape[0]-1):
+        
+
+        index = np.logical_and(T[n] <= t_list_,  t_list_ < T[n+1])
+
+        for i in range(index.shape[1]):
+            mels_list[index[:,i],i] = P[n,i]
+    return mels_list
+
 
 
 
