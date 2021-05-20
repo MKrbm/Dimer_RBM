@@ -8,7 +8,8 @@ from scripts import functions as f
 import scripts.dynamics as Dynamics
 import time
 
-def Dimer_Dynamics(h, V, length,alpha,  t_list, n_jobs = -1, n_chains = 10, n_samples = 100):
+def Dimer_Dynamics(h, V, length,alpha,  t_list, n_jobs = -1, n_chains = 10, n_samples = 100, NUM=100, n_max = 10):
+
 
     name = 'h={}V={}l={}'.format(h, V, length)
 
@@ -51,7 +52,6 @@ def Dimer_Dynamics(h, V, length,alpha,  t_list, n_jobs = -1, n_chains = 10, n_sa
     Split samples into 10 block since memory problem.
 
     '''
-    n_max = 10
     n_samples_ = int(n_samples/n_max)
     for n in range(n_max):
 
@@ -62,7 +62,7 @@ def Dimer_Dynamics(h, V, length,alpha,  t_list, n_jobs = -1, n_chains = 10, n_sa
 
         d = Dynamics.new_dynamics(op, ma)
 
-        P = d.multiprocess(samples_state, 500, n_jobs) 
+        P = d.multiprocess(samples_state, NUM, n_jobs) 
         print('prepaired montecarlo sampling', time.time()-S)
         # print(P.shape)
         np.save(parentdir + '/save/dynamics/'+name + '/P_n={:.1e}_{}.npy'.format(n_samples_, n), P[0])

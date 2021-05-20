@@ -28,11 +28,32 @@ def return_dimer_operator(hilbert , edges, colors):
 
     for edge, color in zip(edges_, colors_):
 
-        l_op = (- color * mszsz + np.identity(4)) / 2
-        return_list.append(nk.operator.LocalOperator(hilbert, l_op, edge.tolist()))
+        if color:
+            l_op = (- color * mszsz + np.identity(4)) / 2
+            return_list.append(nk.operator.LocalOperator(hilbert, l_op, edge.tolist()))
+        else:
+            return_list.append(None)
 
     return return_list 
 
+
+def return_spin_corr(hilbert , edges, colors):
+
+    edges_ = edges.reshape(-1,2)
+    colors_ = colors.reshape(-1,1)
+
+    # op = nk.operator.DimerLocalOperator(hilbert)
+
+    return_list = []
+
+    for edge, color in zip(edges_, colors_):
+
+        if color:
+            l_op = - color * mszsz 
+            return_list.append(nk.operator.LocalOperator(hilbert, l_op, edge.tolist()))
+        else:
+            return_list.append(None)
+    return return_list 
 
 @njit
 def process_P(P, T, t_list):
@@ -57,18 +78,18 @@ def process_P(P, T, t_list):
 
 
 
-from numba import jitclass, int64, float64, complex128, njit, prange
+from numba import jitclass, int64, float64, complex128, njit, prange, int8
 
 
 
 spec = [
-    ("local_states", float64[:]),
+    ("local_states", int8[:]),
     ("basis", int64[:]),
-    ("constant", int64),
+    ("constant", float64),
     ("diag_mels", complex128[:,:]),
     ("n_conns", int64[:,:]),
     ("mels", complex128[:,:,:]),
-    ("x_prime", float64[:,:,:,:]),
+    ("x_prime", int8[:,:,:,:]),
     ("acting_on", int64[:,:]),
     ("acting_size", int64[:]),
     
@@ -104,7 +125,7 @@ class _dynamics:
         
         return get_conn(
             x.reshape((1, -1)),
-            np.ones(1),
+            np.ones(1, dtype=np.int64),
             self.local_states,
             self.basis,
             self.constant,
@@ -124,7 +145,7 @@ class _dynamics:
          
         t_d = time_list[1]-time_list[0]
         t_end = np.shape(time_list)[0]
-        out = np.zeros((X.shape[0], t_end, X.shape[1]),dtype= np.float64)
+        out = np.zeros((X.shape[0], t_end, X.shape[1]),dtype= np.int8)
         t_s = time_list[0]
 
 
@@ -136,9 +157,9 @@ class _dynamics:
             t_index_b = -1
         
             while True:
-                x_prime, mels= self._get_conn(x)
+                x_prime, mels_= self._get_conn(x)
 
-                mels = np.real(mels)
+                mels = np.real(mels_)
                 n_conn = mels.shape[0]
 
                 a_0 = mels[0] - E0

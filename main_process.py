@@ -6,7 +6,7 @@ import sys
 import json 
 import logging
 
-from scripts import Dimer_Corr
+from scripts import Dimer_Process
 
 from conf import * 
 
@@ -32,5 +32,5 @@ if __name__ == "__main__":
 
 
 
-    Dimer_Corr(h, V, length, t_list, n_samples_corr, a, n)
+    Dimer_Process(h, V, length, t_list, n_samples_corr, a, n)
 

@@ -20,14 +20,19 @@ class new_hex:
         
         self.a1 = self.a(np.float32(0))
         self.a2 =  self.a(np.pi*(5/3))
+        A = np.array([
+            self.a1,
+            self.a2
+        ])
+        [self.b1, self.b2] = np.linalg.inv(A.T)
 
         self.size = np.prod(l) * 2
 
-        # definite lattice vector. If one change gage, this vectors will change correspondingly.
-        self.b1 = self.a1 * 2
-        self.b2 = self.a2
+        # define lattice vector. If one change gage, this vectors will change correspondingly.
+        self.a_prime_1 = self.a1 * 2
+        self.a_prime_2 = self.a2
 
-        # definite list of index of unit cells.
+        # define list of index of unit cells.
         self.all_unit_cell = np.zeros((int(np.prod(l)/2), 2), dtype=np.int)
         for i in range(int(l[0]/2)):
             for j in range(l[1]):
@@ -85,6 +90,7 @@ class new_hex:
         self.edges_from_hex , self.edges_color_from_hex = self.edges_from_hex_(l = self.all_hex_index, color=True, num =True)
         self.edges = np.sort(self.edges_from_hex[:,np.array([0,5,4]),:].reshape(-1,2),axis=1)
         self.edges_color = self.edges_color_from_hex[:,np.array([0,5,4])].reshape(-1)
+        self.edges_coor = self.get_edge_coor(self.edges)
 
         self.translate_half_ = np.array([0.5, 0])
         
@@ -122,8 +128,8 @@ class new_hex:
     def ProcessPeriodic(self, X):
         
         X_ = X.reshape(-1, 2).copy()
-        
-        W = self.to_lattice_vec(X_) % self.l
+        epsilon = 1e-2
+        W = np.round((self.to_lattice_vec(X_)+epsilon) % self.l - epsilon, 5)
         
         A = np.concatenate((self.a1.reshape(-1,1), self.a2.reshape(-1,1)), axis=1)
         
@@ -133,7 +139,7 @@ class new_hex:
 
 #             X_[n] = ((w[0] % 1)*self.R1 + (w[1] % 1)*self.R2)
             
-        return (A @ W.T).T.reshape(X.shape)
+        return np.round((A @ W.T).T.reshape(X.shape),6)
     
     
     def edges_from_hex_(self, l, color=False, num = True):
@@ -197,8 +203,11 @@ class new_hex:
         
         
         for i, edge in enumerate(edges_):
-            index = np.where((self.edges == edge).all(axis=1))[0][0]
-            edges_color[i] = self.edges_color[index]
+            if edge[0] != -1:
+                index = np.where((self.edges == edge).all(axis=1))[0][0]
+                edges_color[i] = self.edges_color[index]
+            else:
+                edges_color[i] = 0
         
         return edges_color.reshape(edges.shape[:-1])
 
@@ -296,11 +305,13 @@ class new_hex:
         return temp.reshape(coor.shape[:-1])
 
     
-    def translation(self,coors, c ):
+    def translation(self,coors, c, b=None):
         '''
         coor : lattice coordinates
 
-        translate coordinate of edges by c[0] * self.b1 + c[1] * self.b2
+        translate coordinate of edges by c[0] * self.a_prime_1 + c[1] * self.a_prime_2
+
+        b : translate coordinate of edges by c[0] * b[0] + c[1] * b[1]. 
 
         '''
 
@@ -310,13 +321,71 @@ class new_hex:
 
         coors_ = coors.reshape(-1,2)
 
+        if b is None:
+            b1 = self.a_prime_1
+            b2 = self.a_prime_2
+        else:
+            b1 = b[0]
+            b2 = b[1]
 
 
-        translate_coors  = np.expand_dims(coors_, axis=0) + (c_[:,0][:, None] * self.b1 + c_[:,1][:, None] * self.b2)[:, None, :]
+        translate_coors  = np.expand_dims(coors_, axis=0) + (c_[:,0][:, None] * b1 + c_[:,1][:, None] * b2)[:, None, :]
 
         translate_coors = self.ProcessPeriodic(translate_coors)
 
         return translate_coors.reshape((c_.shape[0],)+coors.shape)
+    
+    def get_edge_coor(self, edges):
+
+        '''
+
+        return coordinate of center point of given edge.
+
+        '''
+
+        edges_ = edges.reshape(-1,2)
+        batch_size = edges_.shape[0]
+        
+        edges_coor_ = self.lattice_num_to_coor(edges_)
+
+        center_coor_ = np.zeros((batch_size,2))
+
+        dist = 0
+        old_dist = 1
+        for i in range(batch_size):
+            edges_coor_i = edges_coor_[i]
+            a = edges_coor_i[0]
+            b = edges_coor_i[1]
+            old_dist = 1
+            for j1 in [-1,0,1]:
+                for j2 in [-1, 0, 1]:
+                    b_ = b + j1*self.R1 + j2*self.R2
+                    dist = np.linalg.norm(a-b_)
+                    if dist<old_dist:
+                        center_coor_[i] = 1/2 * a + 1/2 * b_
+                        old_dist = dist
+
+        return self.ProcessPeriodic(center_coor_)
+
+    def edge_coor_to_lattice(self, edge_coor):
+        '''
+
+        edge_coor : coordinate of center point of edge
+
+        '''
+
+        edge_coor_ = edge_coor.reshape(-1,2)
+        batch_size = edge_coor_.shape[0]
+        edge_lattice = np.zeros((batch_size, 2),dtype=np.int)
+        for b in range(batch_size):
+            edge_coor_b = edge_coor_[b]
+            try:
+                num = np.where(np.round(((self.edges_coor - edge_coor_b)**2).sum(axis=1),4) == 0 )[0][0]
+                edge_lattice[b] = self.edges[num]
+            except:
+                edge_lattice[b] = -1
+        return edge_lattice
+
     
     def reverse(self, lattice_coor_array):
 
@@ -497,12 +566,12 @@ def list_up_states(L):
 
 
 
-@njit
+# @njit
 def num_to_state_kernel(state, n,L):
     for i in range(L):
-        a = n // 2**(L-i-1)
+        a = n // (2**(L-i-1))
         state[i] = a
-        n -= 2**(L-i-1)*a
+        n -= (2**(L-i-1))*a
     return state*2-1
 
 @njit
