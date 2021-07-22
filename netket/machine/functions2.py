@@ -93,6 +93,8 @@ class new_hex:
         self.edges_coor = self.get_edge_coor(self.edges)
 
         self.translate_half_ = np.array([0.5, 0])
+
+        self.n_lattice = np.prod(l) * 2
         
                     
         

@@ -55,6 +55,26 @@ def return_spin_corr(hilbert , edges, colors):
             return_list.append(None)
     return return_list 
 
+
+def return_vison(hilbert , lattice_num):
+
+    lattice_num_ = lattice_num.reshape(-1)
+
+    # op = nk.operator.DimerLocalOperator(hilbert)
+
+    return_list = []
+
+    for num in lattice_num_:
+
+        if num!=-1:
+            l_op = sigmaz 
+            return_list.append(nk.operator.LocalOperator(hilbert, l_op, [num]))
+        else:
+            return_list.append(None)
+    return return_list 
+
+
+
 @njit
 def process_P(P, T, t_list):
     mels_list = np.zeros((t_list.shape[0],)+P.shape[1:] , dtype=P.dtype)
