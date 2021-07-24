@@ -2,6 +2,7 @@ import numpy as np
 from numba import njit, prange
 import netket as nk
 import multiprocessing as mp
+import re
 
 sigmaz = np.array([[1, 0], [0, -1]])
 sigmax = np.array([[0,1],[1,0]])
@@ -90,8 +91,56 @@ def process_P(P, T, t_list):
             mels_list[index[:,i],i] = P[n,i]
     return mels_list
 
+@njit
+def process_P2(P):
+
+    batch_size = P.shape[1]
+    for b in range(batch_size):
+
+        while True:
+
+            p = P[:,b,0]
+            ind = np.where(p == 0)[0]
+            arg_ind = np.where((ind[1:] - ind[:-1]) != 1)[0]
+            if not len(arg_ind):
+                break
+            ind_prime = ind[arg_ind] 
+
+            for ind_ in ind_prime:
+                P[ind_, b, :] = P[ind_ + 1, b, :]
 
 
+def save_corr(file_name, corr ,t_list):
+    outfile = open(file_name, 'w')
+    # write table header
+    for i in range(corr.shape[0]):
+        outfile.write('#{}\n'.format(i)) 
+        for n in range(corr.shape[1]):
+            outfile.write('{}\t{:.2f}\t{}\n'.format(n, t_list[n], corr[i,n]))
+        outfile.write('\n') 
+    outfile.close()
+
+
+def read_corr(file_name):
+
+    corr = []
+    tau = []
+    n = -1
+    with open(file_name) as fe:
+        for line in fe:
+            if re.findall(r'#\d', line):
+                n += 1
+                corr.append([])
+                tau.append([])
+            else:
+                try:
+                    match = re.findall(r'[\d,\.]+', line)
+                    tau[n].append(float(match[1]))
+                    corr[n].append(float(match[2]))
+                except:
+                    pass
+    
+    return np.array(corr), np.array(tau[0])
 
 
 
