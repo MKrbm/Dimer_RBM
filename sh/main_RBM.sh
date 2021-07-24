@@ -1,6 +1,6 @@
 #!/bin/sh
 #SBATCH --get-user-env
-#SBATCH -w donald28
+#SBATCH -p except12
 #SBATCH --mem=30000
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
