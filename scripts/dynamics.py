@@ -216,121 +216,6 @@ class new_dynamics:
 
 
 
-@njit
-def rate_psi(X, X_prime_local, sites, W):
-    
-    n_conn = X_prime_local.shape[0]
-    
-    r = X.dot(W)
-    tan = np.tanh(r)
-#     r_prime = np.empty((n_conn, W.shape[1]), dtype=np.float64)
-    out = np.empty(n_conn, dtype=np.float64)
-    
-    
-    for n in range(n_conn):
-        W_prime = W[sites[n]]
-        r_prime = X_prime_local[n].dot(W_prime)
-        for j in range(W.shape[1]):
-            out[n] = np.prod(np.cosh(r_prime) + tan*np.sinh(r_prime))
-    return out
-
-
-
-
-@jit(nopython=True)
-def get_transition(
-        x,
-        c_r,
-        s_r,
-        tan,
-        sections,
-        basis,
-        constant,
-        diag_mels,
-        n_conns,
-        all_mels,
-        all_x_prime,
-        acting_on
-    ):
-
-
-    batch_size = x.shape[0]
-    n_sites = x.shape[1]
-
-    assert sections.shape[0] == batch_size
-
-    n_operators = n_conns.shape[0]
-    xs_n = np.empty((batch_size, n_operators), dtype=np.intp)
-    xs_n_prime = np.empty(batch_size, dtype=np.intp)
-    max_conn = 0
-
-
-    tot_conn = 0
-
-    sections[:] = 1
-
-    for i in range(n_operators):
-        n_conns_i = n_conns[i]
-        x_i = (x[:, acting_on[i]] + 1) / 2
-        s = np.zeros(batch_size)
-        for j in range(4):
-            s += x_i[:, j] * basis[j]
-        xs_n[:, i] = s
-        sections += n_conns_i[xs_n[:, i]]
-    sections -= 1
-    tot_conn=sections.sum()
-
-    s = 0 
-
-    for b in range(batch_size):
-        s += sections[b]
-        sections[b] = s
-
-
-
-    x_prime = np.empty((tot_conn, 2), dtype=np.int8) # x.shpae[0] is number of connected elements of hamiltonian from batch of states. 
-    t_mels = np.empty(tot_conn, dtype=np.float64)
-    sites_ = np.empty((tot_conn, 2), dtype=np.int8)
-    
-    
-    acting_on = acting_on[:,1:3].copy()
-    
-    basis_r = np.array([3,1])
-    c = 0
-    
-    for b in range(batch_size):
-        x_batch = x[b]
-        xs_n_b = xs_n[b]
-        tan_b = tan[b]
-        
-        
-        for i in range(n_operators):
-            
-            s_r_i = s_r[i]
-            c_r_i = c_r[i]
-            # Diagonal part
-            n_conn_i = n_conns[i, xs_n_b[i]]
-
-            if n_conn_i > 0:
-                sites = acting_on[i]
-
-                for cc in range(n_conn_i):
-                    
-                    x_prime_cc = x_prime[c + cc]
-                    x_prime_cc[:] = all_x_prime[i, xs_n_b[i], cc]
-                    sites_[c + cc] = sites
-                    
-                    num = ((np.sum((x_prime_cc - x_batch[sites]) * basis_r) + 8)/2)
-
-                    sin_prime = s_r_i[np.int(num)]
-                    cos_prime = c_r_i[np.int(num)]
-                    
-
-                    t_mels[c + cc] = all_mels[i, xs_n_b[i], cc] *np.prod(tan_b*sin_prime + cos_prime)
-                c += n_conn_i
-
-
-    return x_prime, sites_, t_mels
 
 
 
@@ -339,24 +224,32 @@ class new_dynamics2(new_dynamics):
   
     def dynamics(self, X, t_list):
         
+        batch_size = X.shape[0]
+        index = np.arange(0, batch_size + 100, 100)
+
+        P = []
         # assert X.dtype == np.int8
         
-        
-        return self._dynamics(
-            X, 
-            t_list,
-            self.local_states,
-            self.basis,
-            self.constant,
-            self.diag_mels,
-            self.n_conns,
-            self.mels,
-            self.x_prime,
-            self.acting_on,
-            self._w,
-            self.c_r,
-            self.s_r
-        )
+        for b in range(batch_size):
+
+            P.append(
+            self._dynamics(
+                X[index[b] : index[b+1]], 
+                t_list,
+                self.local_states,
+                self.basis,
+                self.constant,
+                self.diag_mels,
+                self.n_conns,
+                self.mels,
+                self.x_prime,
+                self.acting_on,
+                self._w,
+                self.c_r,
+                self.s_r
+            )
+            )
+        np.concatenate(P, axis=1)
 
     
     
@@ -482,6 +375,167 @@ class new_dynamics2(new_dynamics):
         return np.concatenate(out1, axis=1), np.concatenate(out2, axis=1)
 
 
+class new_dynamics3(new_dynamics):
+    
+    
+    def dynamics(self, X, t_list):
+        
+        # assert X.dtype == np.int8
+        
+        assert isinstance(t_list, np.ndarray)
+        assert t_list.ndim == 1
+        
+
+
+        batch_size = X.shape[0]
+        index = np.arange(0, batch_size + 100, 100)
+
+        P = []
+        # assert X.dtype == np.int8
+        
+        for b in range(len(index)-1):
+
+            P.append(
+            self._dynamics(
+                        X[index[b] : index[b+1]], 
+                        t_list,
+                        self.basis,
+                        self.constant,
+                        self.diag_mels,
+                        self.n_conns,
+                        self.mels,
+                        self.x_prime,
+                        self.acting_on,
+                        self._w,
+                        self.c_r,
+                        self.s_r
+                    )
+            )
+        P = np.concatenate(P, axis=1)
+
+        return P
+
+    
+    
+    @staticmethod
+    @njit
+    def _dynamics(
+            X,
+            t_list,
+            _basis,
+            _constant,
+            _diag_mels,
+            _n_conns,
+            _mels,
+            _x_prime,
+            _acting_on,
+            _w,
+            c_r,
+            s_r,
+            ):
+        
+        # basis is float64[:]
+        
+
+        batch_size = X.shape[0]
+        t_num = len(t_list)
+        L = X.shape[1]
+        p_array = np.zeros((t_num, batch_size, L),dtype= np.int8) 
+        p_array[0,:,:] = X[:,:]
+        X = X.astype(np.int8)
+        _x_prime = _x_prime.astype(np.int8)
+        
+        
+
+        sections = np.zeros(batch_size + 1, dtype = np.int64)
+        a_0 = np.zeros(batch_size)
+        T = np.zeros(batch_size)
+        t_delta = t_list[1] - t_list[0]
+        ti_old = np.zeros(batch_size, dtype=np.int64)
+
+        l = 0
+        while True:
+
+
+            r = (X).astype(np.float64).dot(_w)
+            tan = np.tanh(r)
+
+           
+            x_prime, sites, mels  = get_transition(
+                                X,
+                                c_r,
+                                s_r,
+                                tan,
+                                sections[1:],
+                                _basis,
+                                _constant,
+                                _diag_mels,
+                                _n_conns,
+                                _mels,
+                                _x_prime,
+                                _acting_on)
+                                
+
+            N_conn = sections[1:] - sections[:-1]
+            for n in range(batch_size):
+                a_0[n] = (-1)* mels[sections[n]: sections[n+1]].sum()
+                
+            r_1 = np.random.rand(batch_size)
+            r_2 = np.random.rand(batch_size)
+            
+            tau = np.log(1/r_1)/a_0
+            T += tau
+
+            if (T > (t_list[-1] + t_delta)).any():
+                break
+            ti_new = (T // t_delta).astype(np.int64)
+            t_update = np.where(ti_new > ti_old)[0]
+
+            # print(t_update[0], ti_new[0], T[0], '\n')
+
+            for index in t_update:
+                p_array[ti_new[index],index,:] = X[index]
+                ti_old[index] = ti_new[index]
+
+            for n in range(batch_size):
+                s = 0
+                for i in range(N_conn[n]):
+                    s -= mels[sections[n] + i]
+                    if s >= r_2[n] * a_0[n]:
+                        X[n][sites[sections[n] +  i]] = x_prime[sections[n] +  i]
+                        break
+            l += 1
+
+        return p_array
+            
+        
+    def run(self, X, t_list, qout):
+        
+        out = self.dynamics(X, t_list)
+        
+        qout.put(out)
+    
+        
+    def multiprocess(self, X, t_list,  n = 1):
+        queue = []
+        process = []
+        N = X.shape[0] 
+        index = np.round(np.linspace(0, N, n + 1)).astype(np.int)
+
+        for i in range(n):
+            queue.append(mp.Queue())
+            p = mp.Process(target=self.run, args=(X[index[i]:index[i+1]], t_list ,queue[i]))
+            p.start()
+            process.append(p)
+        
+        out1 = []
+        for q in queue:
+            out = q.get()
+            out1.append(out)
+        
+        return np.concatenate(out1, axis=1)
+
+
 
 @jit(nopython=True)
 def get_transition2(
@@ -566,6 +620,124 @@ def get_transition2(
                     sites_[c + cc] = sites
                     
                     num = ((np.sum((x_prime_cc - x_batch[sites]) * basis_r) + 8)/2)
+                    sin_prime = s_r_i[np.int(num)]
+                    cos_prime = c_r_i[np.int(num)]
+                    
+
+                    t_mels[c + cc] = all_mels[i, xs_n_b[i], cc] *np.prod(tan_b*sin_prime + cos_prime)
+                c += n_conn_i
+
+
+    return x_prime, sites_, t_mels
+
+
+
+@njit
+def rate_psi(X, X_prime_local, sites, W):
+    
+    n_conn = X_prime_local.shape[0]
+    
+    r = X.dot(W)
+    tan = np.tanh(r)
+#     r_prime = np.empty((n_conn, W.shape[1]), dtype=np.float64)
+    out = np.empty(n_conn, dtype=np.float64)
+    
+    
+    for n in range(n_conn):
+        W_prime = W[sites[n]]
+        r_prime = X_prime_local[n].dot(W_prime)
+        for j in range(W.shape[1]):
+            out[n] = np.prod(np.cosh(r_prime) + tan*np.sinh(r_prime))
+    return out
+
+
+
+
+@jit(nopython=True)
+def get_transition(
+        x,
+        c_r,
+        s_r,
+        tan,
+        sections,
+        basis,
+        constant,
+        diag_mels,
+        n_conns,
+        all_mels,
+        all_x_prime,
+        acting_on
+    ):
+
+
+    batch_size = x.shape[0]
+    n_sites = x.shape[1]
+
+    assert sections.shape[0] == batch_size
+
+    n_operators = n_conns.shape[0]
+    xs_n = np.empty((batch_size, n_operators), dtype=np.intp)
+    xs_n_prime = np.empty(batch_size, dtype=np.intp)
+    max_conn = 0
+
+
+    tot_conn = 0
+
+    sections[:] = 1
+
+    for i in range(n_operators):
+        n_conns_i = n_conns[i]
+        x_i = (x[:, acting_on[i]] + 1) / 2
+        s = np.zeros(batch_size)
+        for j in range(4):
+            s += x_i[:, j] * basis[j]
+        xs_n[:, i] = s
+        sections += n_conns_i[xs_n[:, i]]
+    sections -= 1
+    tot_conn=sections.sum()
+
+    s = 0 
+
+    for b in range(batch_size):
+        s += sections[b]
+        sections[b] = s
+
+
+
+    x_prime = np.empty((tot_conn, 2), dtype=np.int8) # x.shpae[0] is number of connected elements of hamiltonian from batch of states. 
+    t_mels = np.empty(tot_conn, dtype=np.float64)
+    sites_ = np.empty((tot_conn, 2), dtype=np.int8)
+    
+    
+    acting_on = acting_on[:,1:3].copy()
+    
+    basis_r = np.array([3,1])
+    c = 0
+    
+    for b in range(batch_size):
+        x_batch = x[b]
+        xs_n_b = xs_n[b]
+        tan_b = tan[b]
+        
+        
+        for i in range(n_operators):
+            
+            s_r_i = s_r[i]
+            c_r_i = c_r[i]
+            # Diagonal part
+            n_conn_i = n_conns[i, xs_n_b[i]]
+
+            if n_conn_i > 0:
+                sites = acting_on[i]
+
+                for cc in range(n_conn_i):
+                    
+                    x_prime_cc = x_prime[c + cc]
+                    x_prime_cc[:] = all_x_prime[i, xs_n_b[i], cc]
+                    sites_[c + cc] = sites
+                    
+                    num = ((np.sum((x_prime_cc - x_batch[sites]) * basis_r) + 8)/2)
+
                     sin_prime = s_r_i[np.int(num)]
                     cos_prime = c_r_i[np.int(num)]
                     
