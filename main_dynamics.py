@@ -33,5 +33,5 @@ if __name__ == "__main__":
     V = h * q
 
 
-    Dimer_Dynamics(h, V, length,  alpha ,t_list, n_jobs = n_jobs, n_chains = n_chains, n_samples = n_samples, NUM=NUM, n_max = n_max)
+    Dimer_Dynamics(h, V, length,  alpha ,t_list, n_jobs = n_jobs, n_chains = n_chains, n_samples = n_samples, n_max = n_max)
 

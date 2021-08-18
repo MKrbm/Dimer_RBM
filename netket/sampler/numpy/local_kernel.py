@@ -255,7 +255,7 @@ class _DimerLocalKernel_1:
 #         print(log_values_prime)
         
         N = 0
-        for _ in range(sweep_size):
+        for _ in range(sweep_size * 2):
         # while True:
             
 #             state_prime_, mels_ = self.get_conn(state, sections)

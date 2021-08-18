@@ -378,7 +378,7 @@ class new_dynamics2(new_dynamics):
 class new_dynamics3(new_dynamics):
     
     
-    def dynamics(self, X, t_list):
+    def dynamics(self, X, t_list, n_batch = 100):
         
         # assert X.dtype == np.int8
         
@@ -388,7 +388,7 @@ class new_dynamics3(new_dynamics):
 
 
         batch_size = X.shape[0]
-        index = np.arange(0, batch_size + 100, 100)
+        index = np.arange(0, batch_size + n_batch, n_batch)
 
         P = []
         # assert X.dtype == np.int8

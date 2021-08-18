@@ -6,9 +6,10 @@ import numpy as np
 import netket as nk
 from scripts import functions as f
 import scripts.dynamics as Dynamics
+from scripts.dynamics_4 import new_dynamics_one
 import time
 
-def Dimer_Dynamics(h, V, length,alpha,  t_list, n_jobs = -1, n_chains = 10, n_samples = 100, NUM=100, n_max = 10):
+def Dimer_Dynamics(h, V, length,alpha,  t_list, n_jobs = -1, n_chains = 10, n_samples = 100, n_max = 10, n_discard = 1000, sweep_size = 400):
 
 
     name = 'h={}V={}l={}'.format(h, V, length)
@@ -40,7 +41,7 @@ def Dimer_Dynamics(h, V, length,alpha,  t_list, n_jobs = -1, n_chains = 10, n_sa
     ma.load(parentdir + '/save/ma/'+name)
     print('loaded machine',time.time()-S)
 
-    sweep_size = 400
+    # sweep_size = 400
     sa_mul = nk.sampler.DimerMetropolisLocal_multi(machine=ma, op=op_transition, length = length, n_chains=1, sweep_size = sweep_size, kernel = 1, n_jobs=n_jobs)
     sa_mul.reset()
     sa_mul.generate_samples(1000) # discard the begginings of metropolis sampling.
@@ -49,10 +50,13 @@ def Dimer_Dynamics(h, V, length,alpha,  t_list, n_jobs = -1, n_chains = 10, n_sa
 
     '''
 
-    Split samples into 10 block since memory problem.
+    Split samples into 10 block due to memory problem.
 
     '''
-    n_samples_ = int(n_samples/n_max)
+
+    n_samples_ = 10**4
+    n_max = int(n_samples/n_samples_)
+    # n_samples_ = int(n_samples/n_max)
     for n in range(n_max):
 
         samples_state = sa_mul.generate_samples(int(n_samples_ / n_chains))
@@ -60,12 +64,15 @@ def Dimer_Dynamics(h, V, length,alpha,  t_list, n_jobs = -1, n_chains = 10, n_sa
 
         print('prepared initial samples', time.time()-S)
 
-        d = Dynamics.new_dynamics(op, ma)
+        d = new_dynamics_one(op, ma)
 
-        P = d.multiprocess(samples_state, NUM, n_jobs) 
+        P = d.multiprocess(samples_state, t_list, n_jobs) 
+
+        print('obtained dynamics')
+        # f.process_P2(P)
         print('prepaired montecarlo sampling', time.time()-S)
         # print(P.shape)
-        np.save(parentdir + '/save/dynamics/'+name + '/P_n={:.1e}_{}.npy'.format(n_samples_, n), P[0])
-        np.save(parentdir + '/save/dynamics/'+name + '/T_n={:.1e}_{}.npy'.format(n_samples_, n), P[1])
+        np.save(parentdir + '/save/dynamics/'+name + '/P_n={:.1e}_{}.npy'.format(n_samples_, n), P)
+        # np.save(parentdir + '/save/dynamics/'+name + '/T_n={:.1e}_{}.npy'.format(n_samples_, n), P[1])
 
         print('done {}/{}'.format(n+1,n_max))

@@ -147,8 +147,8 @@ def read_corr(file_name):
 
 
 
-from numba import jitclass, int64, float64, complex128, njit, prange, int8
-
+from numba import int64, float64, complex128, njit, prange, int8
+from numba.experimental import jitclass
 
 
 spec = [
@@ -292,6 +292,7 @@ class _dynamics:
 def dimer_hamiltonian(V, h,length = [4, 2]):
 
 
+    print('yoyo')
     sigmaz = np.array([[1, 0], [0, -1]])
     sigmax = np.array([[0,1],[1,0]])
     sigmay = np.array([[0,1],[-1,0]])
@@ -429,7 +430,6 @@ def dimer_flip1(h = 1,length = [4, 2]):
     return op
 
 
-from numba import jitclass, int64, float64, complex128, njit, prange
 
 
 
@@ -1248,3 +1248,81 @@ class dynamics3:
 
         
         return np.vstack(out)
+
+
+
+
+def cal_dimer_corr(operator, P_list, hex_, t_list):
+    
+    length = hex_.l
+    
+    finite_index = (P_list[:,:,0]!=0)
+    num_samples = finite_index.sum(axis=1)
+    P_list_ = P_list.reshape(-1,P_list.shape[-1])
+    sections1 = np.arange(P_list.shape[1])
+    sections2 = np.zeros(P_list_.shape[0])
+
+    _, mels1 = operator[0].get_conn_flattened(P_list_, sections2)
+    mels1 = mels1.reshape(P_list.shape[0], P_list.shape[1]).real * finite_index
+    sub1 = (mels1.sum(axis=-1)/num_samples).real
+
+
+
+    dimer_corr = np.zeros((2*length[0],2*length[1],t_list.shape[0]))
+    dimer_std = np.zeros((2*length[0],2*length[1],t_list.shape[0]))
+
+    for l2 in range(2*length[1]):
+        for l1 in range(2*length[0]):
+
+            if operator[l1 + l2 * 2*length[0]]:
+                mels2 = operator[l1 + l2 * 2*length[0]].get_conn_flattened(P_list[0,:,:], sections1)[1].real
+                sub2 = mels2.mean()
+                
+                dimer_corr[l1,l2] = (mels2 * mels1).sum(axis=1)/num_samples 
+                dimer_std[l1,l2] = np.sqrt(((mels2 * mels1)**2).sum(axis=-1)/num_samples - (((mels2 * mels1)).sum(axis=-1)/num_samples)**2)
+                # dimer_std[l1,l2] /= np.sqrt(num_samples)
+            else:
+                dimer_corr[l1,l2] = 0
+                dimer_std[l1,l2] = 0
+    
+    
+    return dimer_corr, dimer_std, num_samples
+
+
+def cal_vison_corr(operator, P_list, hex_, t_list):
+    
+    length = hex_.l
+    
+    finite_index = (P_list[:,:,0]!=0)
+    num_samples = finite_index.sum(axis=1)
+    P_list_ = P_list.reshape(-1,P_list.shape[-1])
+    sections1 = np.arange(P_list.shape[1])
+    sections2 = np.zeros(P_list_.shape[0])
+
+    _, mels1 = operator[0].get_conn_flattened(P_list_, sections2)
+    mels1 = mels1.reshape(P_list.shape[0], P_list.shape[1]).real * finite_index
+    sub1 = (mels1.sum(axis=-1)/num_samples).real
+
+    L = len(operator)
+
+    dimer_corr = np.zeros((L,t_list.shape[0]))
+    dimer_std = np.zeros((L,t_list.shape[0]))
+
+
+    for l in range(L):
+
+        if operator[l]:
+            mels2 = operator[l].get_conn_flattened(P_list[0,:,:], sections1)[1].real
+            sub2 = mels2.mean()
+            
+            dimer_corr[l] = (mels2 * mels1).sum(axis=1)/num_samples 
+            dimer_std[l] = np.sqrt(((mels2 * mels1)**2).sum(axis=-1)/num_samples - (((mels2 * mels1)).sum(axis=-1)/num_samples)**2)
+            # dimer_std[l1,l2] /= np.sqrt(num_samples)
+        else:
+            dimer_corr[l] = 0
+            dimer_std[l] = 0
+    
+    
+    return dimer_corr, dimer_std, num_samples
+
+

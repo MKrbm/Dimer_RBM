@@ -19,6 +19,6 @@ upperlim_q=${#q[@]}
 
 for ((j=0; j<=upperlim_q-1; j++)); do
     for ((i=0; i<=upperlim_h-1; i++)); do
-        sbatch --job-name=R_h${h[$i]}_q${q[$j]} --output=logfile/RBM/L=8h${h[$i]}_q${q[$j]}.log main_RBM.sh ${h[$i]} ${q[$j]}
+        sbatch --job-name=R_h${h[$i]}_q${q[$j]} --output=logfile/RBM/L=20h${h[$i]}_q${q[$j]}.log main_RBM.sh ${h[$i]} ${q[$j]}
     done
 done

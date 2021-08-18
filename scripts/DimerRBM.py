@@ -61,12 +61,12 @@ def Dimer_RBM(h, V, length, alpha, n_iter, n_samples, n_chains, n_discard , swee
     sampler=sa_mul,
     optimizer=opt,
     n_samples=n_samples,
-    sr = sr,
-    n_discard = n_discard,
+    sr=sr,
+    n_discard=n_discard,
     )
 
 
-    gs.run(n_iter=n_iter, out=parentdir + '/log/'+name)
+    gs.run(n_iter=n_iter, out=parentdir+'/log/'+name)
     ma.save(parentdir + '/save/ma/'+name)
 
 

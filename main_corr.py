@@ -15,12 +15,12 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--h", help = "h",type=float)
     parser.add_argument("--q", help = "q",type=float)
-    parser.add_argument("--n", help = "n",type=int)
+    # parser.add_argument("--n", help = "n",type=int)
     args = parser.parse_args()
     h = round(1.0,2) if (not args.h) and (args.h != 0) else round(args.h,2)
     q = round(1.0,2) if (not args.q) and (args.q != 0) else round(args.q,2)
-    n = 0 if (not args.n) else round(args.n,2)
-    n = int(n)
+    # n = 0 if (not args.n) else round(args.n,2)
+    # n = int(n)
 
     # n_samples = int(3e6)
     # a = 0
@@ -32,5 +32,5 @@ if __name__ == "__main__":
 
 
 
-    Dimer_Corr(h, V, length, t_list, n_samples_corr, a, n)
+    Dimer_Corr(h, V, length, t_list, n_samples, a)
 
