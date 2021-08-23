@@ -216,7 +216,6 @@ class _DimerLocalKernel_1:
                 acting_on,
                 acting_size,
                 ):
-
         self.local_states = _np.sort(local_states)
         self.size = size
         self.n_states = self.local_states.size
@@ -327,6 +326,7 @@ def _log_cosh_sum(x, out, add_factor=None):
             out[i] += add_factor * (
                 _np.sum(x[i] - _np.log(2.0) + _np.log(1.0 + _np.exp(-2.0 * x[i])))
             )
+
     return out
 
 @jit(nopython=True)

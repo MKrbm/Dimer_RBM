@@ -383,7 +383,7 @@ def dimer_flip2(h = 1,length = [4, 2]):
     
     return op
 
-def dimer_flip1(h = 1,length = [4, 2]):
+def dimer_flip1(h = 1,length = [4, 2], return_info = False):
 
 
     sigmaz = np.array([[1, 0], [0, -1]])
@@ -404,30 +404,51 @@ def dimer_flip1(h = 1,length = [4, 2]):
     g = nk.graph.Graph(nodes = [i for i in range(length[0] * length[1] * 2)])
 
     e, ec, ce, cec = hexagon.for_hamiltonian()
+    e_ = np.sort(e, axis= -1)
+
+    shape = e.shape[:-1]
 
     hi = nk.hilbert.Spin(s=0.5, graph=g)
     op = nk.operator.DimerLocalOperator(hi)
 
-    for edge, edge_color, pe, pec in zip(e, ec, ce, cec):
+    # for edge, edge_color, pe, pec in zip(e, ec, ce, cec):
 
-        l_op = -h*mszsx
-        
-        l_op = np.kron(np.identity(2), l_op)
-        l_op = np.kron(l_op, np.identity(2))
-        
-        mat = []
-        edge_ = []
-        for p, c in zip(pe, pec):
-            mat.append(np.kron(
-                potential_ferro if c[0] == 1 else potential_anti,
-                potential_ferro if c[1] == 1 else potential_anti,
-            ))
-            edge_.append(p[0].tolist() + p[1].tolist())
-        
-        op += nk.operator.DimerLocalOperator(hi, l_op @ mat[0], edge_[0])
-        op += nk.operator.DimerLocalOperator(hi, l_op @ mat[1], edge_[1])
-    
-    return op
+    operator_num = np.zeros((np.prod(length) * 3, 2, 3), dtype=np.int)
+    label_num = np.zeros(shape + (1,))
+    n = 0
+    for i in range(length[1]):
+        for j in range(length[0]):
+            for a in range(3):
+
+                edge, edge_color, pe, pec = e[j, 2*i, a], ec[j, 2*i, a], ce[j, 2*i, a], cec[j, 2*i, a]
+
+                operator_num[n] = np.argwhere(np.all(e_ == edge, axis=-1))
+                label_num[tuple(operator_num[n,0])] = n
+                label_num[tuple(operator_num[n,1])] = n
+
+
+
+                l_op = -h*mszsx
+                
+                l_op = np.kron(np.identity(2), l_op)
+                l_op = np.kron(l_op, np.identity(2))
+                
+                mat = []
+                edge_ = []
+                for p, c in zip(pe, pec):
+                    mat.append(np.kron(
+                        potential_ferro if c[0] == 1 else potential_anti,
+                        potential_ferro if c[1] == 1 else potential_anti,
+                    ))
+                    edge_.append(p[0].tolist() + p[1].tolist())
+                
+                op += nk.operator.DimerLocalOperator(hi, l_op @ mat[0], edge_[0])
+                op += nk.operator.DimerLocalOperator(hi, l_op @ mat[1], edge_[1])
+                n += 1
+    if return_info:
+        return op, operator_num, label_num
+    else:
+        return op
 
 
 

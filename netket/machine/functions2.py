@@ -88,13 +88,18 @@ class new_hex:
         self.all_hex_index = np.array(self.all_hex_index)
 
         self.edges_from_hex , self.edges_color_from_hex = self.edges_from_hex_(l = self.all_hex_index, color=True, num =True)
-        self.edges = np.sort(self.edges_from_hex[:,np.array([0,5,4]),:].reshape(-1,2),axis=1)
+        self.edges = np.sort(self.edges_from_hex[:,np.array([0,5,4]),:].reshape(-1,2),axis=1).astype(np.int)
         self.edges_color = self.edges_color_from_hex[:,np.array([0,5,4])].reshape(-1)
         self.edges_coor = self.get_edge_coor(self.edges)
 
         self.translate_half_ = np.array([0.5, 0])
 
         self.n_lattice = np.prod(l) * 2
+
+        label_ = np.arange(self.size).reshape((2*self.l[0], self.l[1]))
+        self.label = np.zeros((self.l[0], 2 * self.l[1]))
+        self.label[:,::2] = label_[::2, :]
+        self.label[:,1::2] = label_[1::2, :]
         
                     
         
@@ -261,9 +266,39 @@ class new_hex:
 
     def for_hamiltonian(self):
 
-        e = self.edges
-        ec = self.edges_color
+        # e = self.edges
+        # ec = self.edges_color
 
+
+        # hex_index, alpha_index = self.from_edges_to_hex(e, num = True)
+
+
+        # alpha1 = alpha_index.copy()
+        # alpha1[:,0] = (alpha1[:,0] + 1) % 6
+        # alpha1[:,1] = (alpha1[:,1] + 1) % 6
+
+        # alpha2 = alpha_index.copy()
+        # alpha2[:,0] = (alpha2[:,0] - 1) % 6
+        # alpha2[:,1] = (alpha2[:,1] - 1) % 6
+        
+
+        # pe1 = self.edges_from_hex[hex_index, alpha1]
+
+        # pe2 = self.edges_from_hex[hex_index, alpha2]
+
+
+        # pe = np.concatenate((pe1[:,None,:,:],pe2[:,None,:,::-1]), axis=1)
+        # temp = pe[:,:,0,:]
+        # pe[:,:,0,:] = temp[:,:,::-1]
+
+        # pec = self.get_edge_color(pe)
+
+        e_ = self.get_conn_edge(self.label)
+        ec_ = self.get_edge_color(e_)
+        shape = e_.shape[:-1]
+
+        e = e_.reshape((-1,2))
+        ec = ec_.reshape(-1)
 
         hex_index, alpha_index = self.from_edges_to_hex(e, num = True)
 
@@ -287,8 +322,9 @@ class new_hex:
         pe[:,:,0,:] = temp[:,:,::-1]
 
         pec = self.get_edge_color(pe)
+
     
-        return e, ec, pe, pec
+        return e_, ec_, pe.reshape(shape + (2,2,2)), pec.reshape(shape + (2,2))
     
     def lattice_num_to_coor(self, num):
 
@@ -544,6 +580,25 @@ class new_hex:
 
         return get_all_state_kernel(state, N, L)
 
+    
+    def get_conn_edge(self, labels):
+        '''
+        obtain connected edges from given lattice in label-form. 
+
+        labels : labels of lattice. ex) labels = [0], then this func returns [[0,7],[0,4],[]]
+        '''
+
+
+        label_ = labels.reshape(-1)
+        conn_edges = np.zeros(labels.shape + (3,2)).astype(np.int)
+        conn_edges_ = conn_edges.reshape(label_.shape + (3,2))
+
+        for n, ele in enumerate(label_):
+            
+            conn_label = np.where(np.any(self.edges == ele,axis=1))[0]
+            conn_edges_[n] = self.edges[conn_label]
+        
+        return conn_edges
 
 
     

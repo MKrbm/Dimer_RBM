@@ -179,7 +179,7 @@ class DimerMetropolisHastings(MetropolisHastings):
         # start = time.time()
         sweep_size = _np.random.randint(0, 10) + self.sweep_size
         accepted = _t_kernel(_state, _state1, self._w, None, sweep_size)
-        print(f"accepted ratio : ",accepted)
+        # print(f"accepted ratio : ",accepted)
         # print(_state.dtype)
         # print('transition took :' ,time.time()-start)
         
