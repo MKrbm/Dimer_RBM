@@ -1303,7 +1303,7 @@ class dynamics3:
 
 
 
-def cal_dimer_corr(operator, P_list, hex_, t_list):
+def cal_dimer_corr(operator,operators , P_list, hex_, t_list):
     
     length = hex_.l
     
@@ -1313,20 +1313,21 @@ def cal_dimer_corr(operator, P_list, hex_, t_list):
     sections1 = np.arange(P_list.shape[1])
     sections2 = np.zeros(P_list_.shape[0])
 
-    _, mels1 = operator[0].get_conn_flattened(P_list_, sections2)
+    _, mels1 = operator.get_conn_flattened(P_list_, sections2)
     mels1 = mels1.reshape(P_list.shape[0], P_list.shape[1]).real * finite_index
     sub1 = (mels1.sum(axis=-1)/num_samples).real
 
 
 
-    dimer_corr = np.zeros((2*length[0],2*length[1],t_list.shape[0]))
-    dimer_std = np.zeros((2*length[0],2*length[1],t_list.shape[0]))
+    # dimer_corr = np.zeros((2*length[0],2*length[1],t_list.shape[0]))
+    # dimer_std = np.zeros((2*length[0],2*length[1],t_list.shape[0]))
+    dimer_corr = np.zeros((length[0],length[1],t_list.shape[0]))
+    dimer_std = np.zeros((length[0],length[1],t_list.shape[0]))
+    for l2 in range(length[1]):
+        for l1 in range(length[0]):
 
-    for l2 in range(2*length[1]):
-        for l1 in range(2*length[0]):
-
-            if operator[l1 + l2 * 2*length[0]]:
-                mels2 = operator[l1 + l2 * 2*length[0]].get_conn_flattened(P_list[0,:,:], sections1)[1].real
+            if operators[l1 + l2 * length[0]]:
+                mels2 = operators[l1 + l2 * length[0]].get_conn_flattened(P_list[0,:,:], sections1)[1].real
                 sub2 = mels2.mean()
                 
                 dimer_corr[l1,l2] = (mels2 * mels1).sum(axis=1)/num_samples 

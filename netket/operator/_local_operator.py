@@ -641,7 +641,7 @@ class LocalOperator(AbstractOperator):
                         _np.searchsorted(local_states, x_i[acting_size_i - k - 1])
                         * basis[k]
                     )
-                print('xs_n',xs_n[b, i], ' n_conn', n_conns[i, xs_n[b, i]])
+                # print('xs_n',xs_n[b, i], ' n_conn', n_conns[i, xs_n[b, i]])
 
                 conn_b += n_conns[i, xs_n[b, i]]
 
@@ -944,7 +944,7 @@ class DimerLocalOperator2(DimerLocalOperator):
             mels[c_diag] = constant
             x_batch = x[b]
             xs_n_b = xs_n[b]
-            print(xs_n_b)
+            # print(xs_n_b)
             x_prime[c_diag] = _np.copy(x_batch)
             c += 1
             for i in range(n_operators):
@@ -1038,7 +1038,7 @@ class DimerLocalOperator2(DimerLocalOperator):
             mels[c_diag] = constant
             x_batch = x[b]
             xs_n_b = xs_n[b]
-            print(xs_n_b)
+            # print(xs_n_b)
             x_prime[c_diag] = _np.copy(x_batch)
             c += 1
             for i in op_labels:

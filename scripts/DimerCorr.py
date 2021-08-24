@@ -118,11 +118,11 @@ def Dimer_Corr(h, V, length, t_list, n_samples, a):
     for i in range(3):    
         dimer_corr = Dimer[i]
         dimer_std = Dimer_std[i]
-        fft_dimer_corr = np.empty_like(dimer_corr)
-        fft_dimer_std=np.empty_like(dimer_std)
+        fft_dimer_corr = np.empty_like(dimer_corr,dtype=np.complex128)
+        fft_dimer_std=np.empty_like(dimer_std,dtype=np.complex128)
         for t in range(t_list.shape[0]):
-            fft_dimer_corr[:,:,t] = np.real(fft.fft2(dimer_corr[:,:,t]))
-            fft_dimer_std[:,:,t] = np.real(fft.fft2(dimer_std[:,:,t]))
+            fft_dimer_corr[:,:,t] = fft.fft2(dimer_corr[:,:,t])
+            fft_dimer_std[:,:,t] = fft.fft2(dimer_std[:,:,t])
 
 
         fft_dimer_corr_prime += fft_dimer_corr * uni[i][:,:,None]
