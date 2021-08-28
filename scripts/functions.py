@@ -385,6 +385,15 @@ def dimer_flip2(h = 1,length = [4, 2]):
 
 def dimer_flip1(h = 1,length = [4, 2], return_info = False):
 
+    '''
+    
+    
+    return 
+        ad2o_o : Adjuscent operator label.  [# of operators , 13] matrix (13 is # of operators that is affected by flipping a plaquet)
+
+    
+    '''
+
 
     sigmaz = np.array([[1, 0], [0, -1]])
     sigmax = np.array([[0,1],[1,0]])
@@ -403,7 +412,7 @@ def dimer_flip1(h = 1,length = [4, 2], return_info = False):
 
     g = nk.graph.Graph(nodes = [i for i in range(length[0] * length[1] * 2)])
 
-    e, ec, ce, cec = hexagon.for_hamiltonian()
+    e, ec, ce, cec, ad2p_edges = hexagon.for_hamiltonian(return_ad2p=True)
     e_ = np.sort(e, axis= -1)
 
     shape = e.shape[:-1]
@@ -413,8 +422,11 @@ def dimer_flip1(h = 1,length = [4, 2], return_info = False):
 
     # for edge, edge_color, pe, pec in zip(e, ec, ce, cec):
 
-    operator_num = np.zeros((np.prod(length) * 3, 2, 3), dtype=np.int)
-    label_num = np.zeros(shape + (1,))
+    operator_num = np.zeros((np.prod(length) * 3, 2, 3), dtype=np.int32)  
+    """len( op._acting_on ) is twice larger than len(operator_num)"""
+
+
+    label_num = np.zeros(shape + (1,), dtype=np.int32)
     n = 0
     for i in range(length[1]):
         for j in range(length[0]):
@@ -445,8 +457,26 @@ def dimer_flip1(h = 1,length = [4, 2], return_info = False):
                 op += nk.operator.DimerLocalOperator(hi, l_op @ mat[0], edge_[0])
                 op += nk.operator.DimerLocalOperator(hi, l_op @ mat[1], edge_[1])
                 n += 1
+
+
     if return_info:
-        return op, operator_num, label_num
+        ad2o_o = np.zeros((len(operator_num), 2*13), dtype=np.int32)
+
+        for i in range(shape[0]):
+            for j in range(int(shape[1]/2)):
+                for a in range(shape[2]):
+                    (x_ind, y_ind, z_ind, _) = np.where((e_[:,:,:,None,:] == ad2p_edges[i,2*j,a][None,None,None,:,:]).all(axis=-1))
+                    tmp = np.unique(label_num[x_ind,y_ind,z_ind].reshape(-1))
+                    ad2o_o[int(label_num[i,2*j,a])][::2] = tmp*2
+                    ad2o_o[int(label_num[i,2*j,a])][1::2] = tmp*2 + 1
+
+
+
+
+        ad2o_o_ = np.zeros((len(ad2o_o)*2, 26), dtype=np.int32)
+        ad2o_o_[::2] = ad2o_o
+        ad2o_o_[1::2] = ad2o_o
+        return op, ad2o_o_, operator_num, label_num
     else:
         return op
 
@@ -1273,7 +1303,7 @@ class dynamics3:
 
 
 
-def cal_dimer_corr(operator, P_list, hex_, t_list):
+def cal_dimer_corr(operator,operators , P_list, hex_, t_list):
     
     length = hex_.l
     
@@ -1283,20 +1313,21 @@ def cal_dimer_corr(operator, P_list, hex_, t_list):
     sections1 = np.arange(P_list.shape[1])
     sections2 = np.zeros(P_list_.shape[0])
 
-    _, mels1 = operator[0].get_conn_flattened(P_list_, sections2)
+    _, mels1 = operator.get_conn_flattened(P_list_, sections2)
     mels1 = mels1.reshape(P_list.shape[0], P_list.shape[1]).real * finite_index
     sub1 = (mels1.sum(axis=-1)/num_samples).real
 
 
 
-    dimer_corr = np.zeros((2*length[0],2*length[1],t_list.shape[0]))
-    dimer_std = np.zeros((2*length[0],2*length[1],t_list.shape[0]))
+    # dimer_corr = np.zeros((2*length[0],2*length[1],t_list.shape[0]))
+    # dimer_std = np.zeros((2*length[0],2*length[1],t_list.shape[0]))
+    dimer_corr = np.zeros((length[0],length[1],t_list.shape[0]))
+    dimer_std = np.zeros((length[0],length[1],t_list.shape[0]))
+    for l2 in range(length[1]):
+        for l1 in range(length[0]):
 
-    for l2 in range(2*length[1]):
-        for l1 in range(2*length[0]):
-
-            if operator[l1 + l2 * 2*length[0]]:
-                mels2 = operator[l1 + l2 * 2*length[0]].get_conn_flattened(P_list[0,:,:], sections1)[1].real
+            if operators[l1 + l2 * length[0]]:
+                mels2 = operators[l1 + l2 * length[0]].get_conn_flattened(P_list[0,:,:], sections1)[1].real
                 sub2 = mels2.mean()
                 
                 dimer_corr[l1,l2] = (mels2 * mels1).sum(axis=1)/num_samples 

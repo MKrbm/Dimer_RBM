@@ -100,6 +100,8 @@ class new_hex:
         self.label = np.zeros((self.l[0], 2 * self.l[1]))
         self.label[:,::2] = label_[::2, :]
         self.label[:,1::2] = label_[1::2, :]
+
+
         
                     
         
@@ -264,34 +266,8 @@ class new_hex:
 
         return out 
 
-    def for_hamiltonian(self):
+    def for_hamiltonian(self, return_ad2p = False):
 
-        # e = self.edges
-        # ec = self.edges_color
-
-
-        # hex_index, alpha_index = self.from_edges_to_hex(e, num = True)
-
-
-        # alpha1 = alpha_index.copy()
-        # alpha1[:,0] = (alpha1[:,0] + 1) % 6
-        # alpha1[:,1] = (alpha1[:,1] + 1) % 6
-
-        # alpha2 = alpha_index.copy()
-        # alpha2[:,0] = (alpha2[:,0] - 1) % 6
-        # alpha2[:,1] = (alpha2[:,1] - 1) % 6
-        
-
-        # pe1 = self.edges_from_hex[hex_index, alpha1]
-
-        # pe2 = self.edges_from_hex[hex_index, alpha2]
-
-
-        # pe = np.concatenate((pe1[:,None,:,:],pe2[:,None,:,::-1]), axis=1)
-        # temp = pe[:,:,0,:]
-        # pe[:,:,0,:] = temp[:,:,::-1]
-
-        # pec = self.get_edge_color(pe)
 
         e_ = self.get_conn_edge(self.label)
         ec_ = self.get_edge_color(e_)
@@ -323,8 +299,53 @@ class new_hex:
 
         pec = self.get_edge_color(pe)
 
-    
-        return e_, ec_, pe.reshape(shape + (2,2,2)), pec.reshape(shape + (2,2))
+
+        shape = e_.shape[:-1]
+        ad2p_edge_array = np.zeros(shape + (13,2), dtype = np.int32)
+
+        for i in range(shape[0]):
+            for j in range(shape[1]):
+                for a in range(shape[2]):
+                    ad2p_edge = []
+                    edge_ = e_[i,j,a]
+                    tmp = self.get_conn_edge(edge_).reshape(-1, 2)
+                    tmp = np.unique(tmp)
+                    for edge in self.get_conn_edge(tmp).reshape(-1, 2):
+                        if edge.tolist() not in ad2p_edge:
+                            ad2p_edge.append(edge.tolist())
+                    ad2p_edge_array[i,j,a] = np.array(ad2p_edge)
+
+        if return_ad2p:
+            return e_, ec_, pe.reshape(shape + (2,2,2)), pec.reshape(shape + (2,2)), ad2p_edge_array
+        else:
+            return e_, ec_, pe.reshape(shape + (2,2,2)), pec.reshape(shape + (2,2))
+
+        # e = self.edges
+        # ec = self.edges_color
+
+
+        # hex_index, alpha_index = self.from_edges_to_hex(e, num = True)
+
+
+        # alpha1 = alpha_index.copy()
+        # alpha1[:,0] = (alpha1[:,0] + 1) % 6
+        # alpha1[:,1] = (alpha1[:,1] + 1) % 6
+
+        # alpha2 = alpha_index.copy()
+        # alpha2[:,0] = (alpha2[:,0] - 1) % 6
+        # alpha2[:,1] = (alpha2[:,1] - 1) % 6
+        
+
+        # pe1 = self.edges_from_hex[hex_index, alpha1]
+
+        # pe2 = self.edges_from_hex[hex_index, alpha2]
+
+
+        # pe = np.concatenate((pe1[:,None,:,:],pe2[:,None,:,::-1]), axis=1)
+        # temp = pe[:,:,0,:]
+        # pe[:,:,0,:] = temp[:,:,::-1]
+
+        # pec = self.get_edge_color(pe)
     
     def lattice_num_to_coor(self, num):
 
@@ -598,7 +619,7 @@ class new_hex:
             conn_label = np.where(np.any(self.edges == ele,axis=1))[0]
             conn_edges_[n] = self.edges[conn_label]
         
-        return conn_edges
+        return np.sort(conn_edges, axis=-1)
 
 
     

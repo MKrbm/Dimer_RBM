@@ -1,4 +1,5 @@
 import numpy as np
+import netket as nk
 
 import argparse
 import os

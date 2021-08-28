@@ -18,9 +18,12 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--h", help = "h",type=float)
     parser.add_argument("--q", help = "q",type=float)
+    parser.add_argument("--d", help = "h",type=bool)
     args = parser.parse_args()
     h = round(float(1),2) if (not args.h) and (args.h != 0) else round(args.h,2)
     q = round(float(1),2) if (not args.q) and (args.q != 0) else round(args.q,2)
+    debug = False if (not args.d) and (args.d != 0) else args.d
+
 
     # n_chains = 10
     # n_samples = int(3e6)
@@ -33,5 +36,5 @@ if __name__ == "__main__":
     V = h * q
 
 
-    Dimer_Dynamics(h, V, length,  alpha ,t_list, n_jobs = n_jobs, n_chains = n_chains, n_samples = n_samples, n_max = n_max)
+    Dimer_Dynamics(h, V, length,  alpha ,t_list, n_jobs = n_jobs, n_chains = n_chains, n_samples = n_samples, n_max = n_max, debug = debug)
 

@@ -9,7 +9,7 @@ import scripts.dynamics as Dynamics
 from scripts.dynamics_4 import new_dynamics_one
 import time
 
-def Dimer_Dynamics(h, V, length,alpha,  t_list, n_jobs = -1, n_chains = 10, n_samples = 100, n_max = 10, n_discard = 1000, sweep_size = 400):
+def Dimer_Dynamics(h, V, length,alpha,  t_list, n_jobs = -1, n_chains = 10, n_samples = 100, n_max = 10, n_discard = 1000, sweep_size = 400, debug = False):
 
 
     name = 'h={}V={}l={}'.format(h, V, length)
@@ -38,8 +38,14 @@ def Dimer_Dynamics(h, V, length,alpha,  t_list, n_jobs = -1, n_chains = 10, n_sa
     ma = nk.machine.RbmDimer(hi, hex_, alpha = alpha, symmetry = True
                         ,use_hidden_bias = False, use_visible_bias = False, dtype=float, reverse=True, half=True)
     
-    ma.load(parentdir + '/save/ma/'+name)
-    print('loaded machine',time.time()-S)
+
+    if debug:
+        ma.init_random_parameters(seed=1234)
+        ma._ws[:] = 0
+        ma._set_bare_parameters( ma._a, ma._b, ma._w, ma._as, ma._bs, ma._ws, ma._autom, ma._z2 )
+    else:
+        ma.load(parentdir + '/save/ma/'+name)
+        print('loaded machine',time.time()-S)
 
     # sweep_size = 400
     sa_mul = nk.sampler.DimerMetropolisLocal_multi(machine=ma, op=op_transition, length = length, n_chains=1, sweep_size = sweep_size, kernel = 1, n_jobs=n_jobs)

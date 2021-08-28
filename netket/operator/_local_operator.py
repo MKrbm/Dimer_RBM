@@ -641,7 +641,7 @@ class LocalOperator(AbstractOperator):
                         _np.searchsorted(local_states, x_i[acting_size_i - k - 1])
                         * basis[k]
                     )
-                print('xs_n',xs_n[b, i], ' n_conn', n_conns[i, xs_n[b, i]])
+                # print('xs_n',xs_n[b, i], ' n_conn', n_conns[i, xs_n[b, i]])
 
                 conn_b += n_conns[i, xs_n[b, i]]
 
@@ -944,7 +944,7 @@ class DimerLocalOperator2(DimerLocalOperator):
             mels[c_diag] = constant
             x_batch = x[b]
             xs_n_b = xs_n[b]
-            print(xs_n_b)
+            # print(xs_n_b)
             x_prime[c_diag] = _np.copy(x_batch)
             c += 1
             for i in range(n_operators):
@@ -961,6 +961,100 @@ class DimerLocalOperator2(DimerLocalOperator):
                         x_prime_cc = x_prime[c + cc]
                         x_prime_cc[:] = _np.copy(x_batch)
                         x_prime_cc[sites] = all_x_prime[i, xs_n_b[i], cc]
+    #                     x_prime[c + cc] = x_prime_cc
+    #                     x_prime[c + cc] =  _np.copy(x_batch)
+    #                     for k in range(acting_size): 
+    #                         x_prime[c + cc, sites[k]] = all_x_prime[
+    #                             i, xs_n[b, i], cc, k
+    #                         ]
+                    c += n_conn_i
+
+
+        return x_prime, mels
+
+    @staticmethod
+    @jit(nopython=True)
+    def _new_get_conn_flattened_kernel(
+            x,
+            sections,
+            basis,
+            constant,
+            diag_mels,
+            n_conns,
+            all_mels,
+            all_x_prime,
+            acting_on,
+            acting_size,
+            op_labels,
+        ):
+        '''
+        only operators in op_labels are considered.
+        '''
+        
+        
+        batch_size = x.shape[0]
+        n_sites = x.shape[1]
+
+        assert sections.shape[0] == batch_size
+
+        # n_operators = n_conns.shape[0]
+        n_operators = len(op_labels)
+        xs_n = _np.empty((batch_size, n_operators), dtype=_np.intp)
+
+        max_conn = 0
+
+    #     acting_size = np.int8(acting_size)
+    #     acting_size = 4
+        tot_conn = 0
+
+        sections[:] = 1
+        
+        for i in op_labels:
+            n_conns_i = n_conns[i]
+            x_i = (x[:, acting_on[i]] + 1) / 2
+            s = _np.zeros(batch_size)
+            for j in range(acting_size):
+                s += x_i[:, j] * basis[j]
+            xs_n[:, i] = s
+            sections += n_conns_i[xs_n[:, i]]
+        tot_conn=sections.sum()
+        
+        s = 0 
+    #     sec = sections.copy()
+        for b in range(batch_size):
+            s += sections[b]
+            sections[b] = s
+
+
+
+        x_prime = _np.empty((tot_conn, 2), dtype=_np.int8) # x.shpae[0] is number of connected elements of hamiltonian from batch of states. 
+        mels = _np.empty(tot_conn, dtype=_np.complex128)
+
+        conn_op_labels = _np.seros(tot_conn)
+        
+        c = 0
+        for b in range(batch_size):
+            c_diag = c
+            mels[c_diag] = constant
+            x_batch = x[b]
+            xs_n_b = xs_n[b]
+            # print(xs_n_b)
+            x_prime[c_diag] = _np.copy(x_batch)
+            c += 1
+            for i in op_labels:
+
+                # Diagonal part
+                mels[c_diag] += diag_mels[i, xs_n_b[i]]
+                n_conn_i = n_conns[i, xs_n_b[i]]
+
+                if n_conn_i > 0:
+                    sites = acting_on[i]
+
+                    for cc in range(n_conn_i):
+                        mels[c + cc] = all_mels[i, xs_n_b[i], cc]
+                        # x_prime_cc = x_prime[c + cc]
+                        # x_prime_cc[:] = _np.copy(x_batch)
+                        x_prime = all_x_prime[i, xs_n_b[i], cc][1:3]
     #                     x_prime[c + cc] = x_prime_cc
     #                     x_prime[c + cc] =  _np.copy(x_batch)
     #                     for k in range(acting_size): 

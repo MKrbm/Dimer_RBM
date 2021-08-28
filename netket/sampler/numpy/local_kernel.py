@@ -390,31 +390,30 @@ def get_conn_one(
 
 #         tot_conn += conn_b
         sections[b] = S
-    
-
-
-
     return X_temp[:S]
 
 
-@jit(nopython=True)
-def get_conn_one_2(
+# @jit(nopython=True)
+def new_get_conn_one(
     x,
     sections,
     basis,
     n_conns,
     all_x_prime,
     acting_on,
+    op_labels,
 ):
+    '''
+    only operators in op_labels are considered.
+    '''
+
     batch_size = x.shape[0]
     n_sites = x.shape[1]
 
     assert batch_size == 1, 'batch_size must be 1'
 
-    n_operators = n_conns.shape[0]
-    temp_size = int(n_sites/4)+1
+    n_operators = len(op_labels)
     
-    X_temp = _np.zeros((temp_size, n_sites), dtype=x.dtype)
     xs_n = _np.zeros((batch_size, n_operators), dtype=_np.intp) + 15
 
 
@@ -424,38 +423,48 @@ def get_conn_one_2(
         x_b = x[b]
         # diagonal element
         # counting the off-diagonal elements
-        for i in range(n_operators):
+        j = 0
+        for i in op_labels:
             # xs_n_b_i = xs_n[b,i]
             
+
             acting_on_i = acting_on[i]
             x_i = x_b[acting_on_i]
 
             for k in range(4):
-                xs_n[b,i] += (
+                xs_n[b,j] += (
                     x_i[k]
                     * basis[k]
                 )
-            xs_n[b,i] = int(xs_n[b,i]/2)
-            
-            if n_conns[i, xs_n[b,i]]:
+            xs_n[b,j] = int(xs_n[b,j]/2)
+
+            if n_conns[i, xs_n[b,j]]:
                 # X_temp[S] = x_b
                 # X_temp[S][acting_on_i] = all_x_prime[i, xs_n_b_i]
                 S += 1
+            
+            j += 1
         sections[b] = S
-    X_temp = _np.zeros((S, n_sites), dtype=x.dtype)
 
-    S = 1
+    X_temp = _np.zeros((S-1, 4), dtype=x.dtype)
+    acting_on_prime = _np.zeros((S-1, 4), dtype=_np.int32)
+
+    conn_op_label = _np.zeros(S-1, dtype = _np.int32)
+    S = 0
     for b in range(batch_size):
-        for i in range(n_operators):
-            if n_conns[i, xs_n[b,i]]:
-                X_temp[S] = x[b]
-                X_temp[S][acting_on[i]] = all_x_prime[i, xs_n[b,i]]
+
+        j = 0
+        for i in op_labels:
+            if n_conns[i, xs_n[b,j]]:
+                conn_op_label[S] = i
+                # X_temp[S] = x[b]
+                # X_temp[S][acting_on[i]] = all_x_prime[i, xs_n[b,i]]
+                acting_on_prime[S] = acting_on[i]
+                X_temp[S] = all_x_prime[i, xs_n[b,j]]
                 S += 1
+            j += 1
 
 
 #         tot_conn += conn_b
-    
 
-
-
-    return X_temp
+    return X_temp, acting_on_prime, conn_op_label

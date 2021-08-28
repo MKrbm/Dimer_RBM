@@ -87,3 +87,16 @@ def mul_p(ma, x, n_jobs):
         processes.append(p)
     for process in processes:
         process.join()
+
+def write2dat(corr, t_list, path):
+    file = open(path,"w")
+    L = corr.shape[0]
+    for m1 in range(L):
+        for m2 in range(L):
+            file.write(f"#{m1},{m2}\n")
+            for t in range(len(t_list)):
+                tmp = corr[m1][m2][t]
+                line = "{:3.1f}\t{:3.6f}\t{:3.6f}\n".format(t_list[t], tmp.real, tmp.imag)
+                file.write(line)
+            file.write("\n")
+    file.close()
