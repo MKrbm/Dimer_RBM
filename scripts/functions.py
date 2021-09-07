@@ -460,7 +460,7 @@ def dimer_flip1(h = 1,length = [4, 2], return_info = False):
 
 
     if return_info:
-        ad2o_o = np.zeros((len(operator_num), 2*13), dtype=np.int32)
+        ad2o_o = np.zeros((len(operator_num), 2*13), dtype=np.int64)
 
         for i in range(shape[0]):
             for j in range(int(shape[1]/2)):
@@ -473,7 +473,7 @@ def dimer_flip1(h = 1,length = [4, 2], return_info = False):
 
 
 
-        ad2o_o_ = np.zeros((len(ad2o_o)*2, 26), dtype=np.int32)
+        ad2o_o_ = np.zeros((len(ad2o_o)*2, 26), dtype=np.int64)
         ad2o_o_[::2] = ad2o_o
         ad2o_o_[1::2] = ad2o_o
         return op, ad2o_o_, operator_num, label_num
@@ -1378,3 +1378,69 @@ def cal_vison_corr(operator, P_list, hex_, t_list):
     return dimer_corr, dimer_std, num_samples
 
 
+@njit
+def _permute(x, T, color):
+    x_ = np.zeros((T.shape[0], x.shape[-1]))
+    
+    for j in range(len(x_)):
+        for i in range(len(x)):
+            x_[j,i] = x[T[j,i]] * color[i]
+    return x_
+
+
+@njit
+def permute(X, T, color):
+    
+    X_ = np.zeros((X.shape[0]*2, T.shape[1], X.shape[-1]))
+    
+    for a in range(2):
+        for i in range(len(X)):
+            X_[2*i + a] = _permute(X[i], T[a], color[a])
+    return X_.reshape(-1,X.shape[-1])
+
+
+@njit
+def dimer_fourier2D(corr):
+    
+    assert corr.shape[0] == corr.shape[1]
+    L = corr.shape[0]
+    
+    momentum = np.zeros((L*2, L*2, corr.shape[-1]), dtype=np.complex128)
+    
+    for m1 in range(2 * L):
+        for m2 in range(2 * L):
+            tmp = np.zeros(corr.shape[-1], dtype=np.complex128)
+            for n1 in range(L):
+                for n2 in range(L):
+                    tmp += np.exp(-1j*(n1 * m1/L * 2 * np.pi + n2 * m2/L * 2 * np.pi)) * corr[n1,n2]
+            momentum[m1,m2] = tmp/(2*L)
+    
+    return momentum
+
+
+def dimer_fourier2D_sub(dimer_m_, t_list, hex_):
+    A = np.array([
+    hex_.a1,
+    hex_.a2
+    ])
+    assert dimer_m_.shape[0] == dimer_m_.shape[1] == 3
+    assert dimer_m_.shape[2] == dimer_m_.shape[3] 
+    
+    edge_coors = hex_.r_alpha
+    [b1, b2] = np.linalg.inv(A.T)
+    b = np.array([b1, b2])
+    G = edge_coors @ b.T
+    
+    
+    L = dimer_m_.shape[2]
+    
+    dimer_momentum = np.zeros((L,L,len(t_list)), dtype=np.complex128)
+    
+    for m1 in range(L):
+        for m2 in range(L):
+            tmp = np.zeros(dimer_m_.shape[-1],dtype=np.complex128)
+            for a in range(3):
+                for b in range(3):
+                    tmp += np.exp(-1j * (m1* (2*np.pi) /L *(G[a,0] - G[b,0]) + m2* (2*np.pi) /L *(G[a,1] - G[b,1]))) * dimer_m_[a,b,m1,m2]
+            dimer_momentum[m1,m2] = tmp / 3
+    return dimer_momentum

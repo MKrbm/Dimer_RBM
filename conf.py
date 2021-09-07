@@ -1,7 +1,7 @@
 import numpy as np
 
 
-n_samples = 2 * 10 **4 # number of samples in dynamics
+n_samples = 10 **4 # number of samples in dynamics
 n_max = 10 # number of partitions
 n_samples_corr = int(n_samples/n_max)
 n_samples_RBM = 10 ** 3 # number of sample used for montecarlo

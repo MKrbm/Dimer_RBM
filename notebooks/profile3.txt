@@ -1,0 +1,107 @@
+Timer unit: 1e-06 s
+
+Total time: 0.984613 s
+File: <ipython-input-143-fcd3f3e436ac>
+Function: new_transition at line 5
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+     5                                           def new_transition(state, state_1, w, r, sweep_size, _basis, _n_conns, _x_prime, _acting_on, _ad2o_o, _ad2_bool):
+     6                                               '''
+     7                                               This transition is exclusively for batch_size = 1
+     8                                               '''
+     9                                           
+    10         1          3.0      3.0      0.0      accepted = 0
+    11         1          2.0      2.0      0.0      batch_size = state.shape[0]
+    12         1          1.0      1.0      0.0      sys_size = state.shape[-1]
+    13                                           
+    14         1          1.0      1.0      0.0      assert batch_size == 1, 'batch_size must be 1'
+    15                                           
+    16         1          7.0      7.0      0.0      sections = np.zeros(1, dtype=np.int64)
+    17         1          3.0      3.0      0.0      sections_1 = np.zeros(1, dtype=np.int64)
+    18         1          2.0      2.0      0.0      state_1 = state
+    19                                               
+    20         1          9.0      9.0      0.0      r = np.zeros((1, w.shape[1]), dtype = np.float64)
+    21                                           
+    22         1        178.0    178.0      0.0      log_values = _log_val_kernel(state.astype(np.float64), w, r)[0]
+    23                                               
+    24         1         17.0     17.0      0.0      state_prime = np.zeros((int(sys_size/4), sys_size), dtype=np.int32)
+    25         1        169.0    169.0      0.0      state_1_prime = np.zeros((int(sys_size/4), sys_size), dtype=np.int32)
+    26                                           #     state_prime[:] = state
+    27                                               
+    28                                               
+    29         1          5.0      5.0      0.0      conn_op_prime = np.zeros(int(sys_size/4), dtype=np.int32)
+    30         1          3.0      3.0      0.0      conn_op_prime_1 = np.zeros(int(sys_size/4), dtype=np.int32)
+    31                                               
+    32                                           
+    33         1         10.0     10.0      0.0      op_labels = np.arange(len(_acting_on))
+    34                                           #     print(state_prime.shape)
+    35         2        128.0     64.0      0.0      conn_op_prime[:] = local_kernel.get_conn_one_2(
+    36         1          1.0      1.0      0.0                                      state, sections,_basis,_n_conns,_x_prime,_acting_on, op_labels, state_prime)
+    37                                               
+    38                                           
+    39                                               
+    40         1          2.0      2.0      0.0      n_conn = sections[0]
+    41         1          2.0      2.0      0.0      n_conn_1 = n_conn
+    42                                                   
+    43         1         14.0     14.0      0.0      np.random.seed(2021)
+    44         1          1.0      1.0      0.0      last_state = state
+    45                                           
+    46         1          1.0      1.0      0.0      N = 0
+    47         1          1.0      1.0      0.0      last_picked = 0
+    48     11949       6540.0      0.5      0.7      for kk in range(sweep_size * 2):
+    49                                           #         print(kk)
+    50                                           
+    51                                           #         print(f'conn_op_prime (this is labels of flippable operators in last op_labels) = {conn_op_prime}')
+    52                                           #         print(f"n_conn = {n_conn}")
+    53                                           #         print(state)
+    54     11949      31879.0      2.7      3.2          rs = (np.random.rand(1)[0] * n_conn).astype(np.int64)
+    55     11949       9049.0      0.8      0.9          op_label = conn_op_prime[rs] # choose operator label randomly. and flip the plaquete the choosen operator acting on.
+    56     11949       8913.0      0.7      0.9          op_labels = _ad2o_o[op_label] # list up all adjacent operators to choosen operator.
+    57                                                   
+    58     11949       6291.0      0.5      0.6          state_old = state
+    59     11949      20539.0      1.7      2.1          state_1 = state_prime[rs].reshape(1,-1).copy() # new candidate state
+    60     11949       8663.0      0.7      0.9          op_label_bool = _ad2_bool[op_label]
+    61                                           #         print((state_1==0).any())
+    62                                           
+    63                                           #         print(conn_op_prime, n_conn, op_label, last_picked, list(last_state[0]))
+    64                                               
+    65                                           
+    66     23898     132201.0      5.5     13.4          local_kernel.get_conn_one_3(
+    67     11949       6424.0      0.5      0.7                                      state_1, sections,_basis,_n_conns,
+    68     11949       6314.0      0.5      0.6                                      _x_prime,_acting_on, op_labels, state_1_prime,
+    69     11949       6208.0      0.5      0.6                                      conn_op_prime, conn_op_prime_1, op_label_bool, n_conn)
+    70     11949       8190.0      0.7      0.8          n_conn_1 = sections[0]
+    71                                                   
+    72                                                   
+    73                                                   
+    74     11949       8010.0      0.7      0.8          prob_corr = n_conn/n_conn_1
+    75                                           
+    76                                           
+    77     11949     545028.0     45.6     55.4          log_values_1 = _log_val_kernel(state_1.astype(np.float64), w, r)[0]
+    78                                           
+    79     35847      41958.0      1.2      4.3          prob = np.exp(
+    80     11949      12061.0      1.0      1.2              2 * (log_values_1 - log_values)
+    81     11949       6581.0      0.6      0.7          ) * prob_corr
+    82                                           
+    83     11949      29603.0      2.5      3.0          if prob > np.random.rand(1):
+    84                                           
+    85     10000      12209.0      1.2      1.2              state[:] = state_1
+    86     10000      37320.0      3.7      3.8              state_prime[:] = state_1_prime
+    87     10000       9174.0      0.9      0.9              conn_op_prime[:] = conn_op_prime_1
+    88                                           
+    89     10000       6060.0      0.6      0.6              log_values = log_values_1
+    90     10000       5569.0      0.6      0.6              n_conn = n_conn_1
+    91     10000       5800.0      0.6      0.6              accepted += 1
+    92                                                   
+    93                                           #         else:
+    94                                           #             print("YO?")
+    95                                                       
+    96                                           #         print("-" * 20)
+    97                                           #         print("\n\n")
+    98                                           
+    99     11949       6788.0      0.6      0.7          N += 1
+   100     11949       6679.0      0.6      0.7          if accepted >= sweep_size:
+   101         1          1.0      1.0      0.0              break
+   102                                                   
+   103         1          1.0      1.0      0.0      return accepted/N

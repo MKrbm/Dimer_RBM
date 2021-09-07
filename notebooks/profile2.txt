@@ -1,0 +1,72 @@
+Timer unit: 1e-06 s
+
+Total time: 0.283898 s
+File: <ipython-input-63-dd46dc922744>
+Function: transition at line 3
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+     3                                           def transition(state, state_1, w, r, sweep_size, _basis, _n_conns, _x_prime, _acting_on):
+     4                                               '''
+     5                                               This transition is exclusively for batch_size = 1
+     6                                               '''
+     7                                           
+     8         1          2.0      2.0      0.0      accepted = 0
+     9         1          4.0      4.0      0.0      batch_size = state.shape[0]
+    10                                           
+    11         1          2.0      2.0      0.0      assert batch_size == 1, 'batch_size must be 1'
+    12                                           
+    13         1          7.0      7.0      0.0      sections = np.zeros(1, dtype=np.int64)
+    14         1          4.0      4.0      0.0      sections_1 = np.zeros(1, dtype=np.int64)
+    15         1          1.0      1.0      0.0      state_1 = state
+    16         1          4.0      4.0      0.0      r = np.zeros((1, w.shape[1]), dtype = np.float64)
+    17                                               
+    18         1         36.0     36.0      0.0      log_values = _log_val_kernel(state.astype(np.float64), w, r)[0]
+    19                                           #         print(log_values)
+    20                                           
+    21         1         19.0     19.0      0.0      state_prime = local_kernel.get_conn_one(state,sections, _basis, _n_conns, _x_prime, _acting_on)
+    22         1          5.0      5.0      0.0      n_conn = sections[0]-1
+    23                                           #         print(log_values_prime)
+    24                                           
+    25         1          1.0      1.0      0.0      N = 0
+    26     11513       4326.0      0.4      1.5      for _ in range(sweep_size * 2):
+    27                                               # while True:
+    28                                           
+    29                                           #             state_prime_, mels_ = self.get_conn(state, sections)
+    30                                           #             n_conn_ = sections[0]-1
+    31                                           
+    32                                                   # print((state_prime_ == state_prime).any())
+    33                                                   # print((n_conn_ + 1).sum())
+    34                                           #             print(log_values)
+    35                                           
+    36     11513      35636.0      3.1     12.6          rs = (np.random.rand(1) * (n_conn)).astype(np.int64)
+    37                                           
+    38     11513      32602.0      2.8     11.5          state_1 = state_prime[rs+1].reshape(1,-1)
+    39                                           
+    40     11513      58179.0      5.1     20.5          state_1_prime = local_kernel.get_conn_one(state_1, sections_1, _basis, _n_conns, _x_prime, _acting_on)
+    41     11513       9329.0      0.8      3.3          n_conn_1 = sections_1[0]-1
+    42                                           
+    43     11513       5717.0      0.5      2.0          prob_corr = n_conn/n_conn_1
+    44                                           
+    45                                           
+    46     11513      35781.0      3.1     12.6          log_values_1 = _log_val_kernel(state_1.astype(np.float64), w, r)[0]
+    47                                           
+    48     34539      29009.0      0.8     10.2          prob = np.exp(
+    49     11513       8197.0      0.7      2.9              2 * (log_values_1 - log_values)
+    50     11513       4360.0      0.4      1.5          ) * prob_corr
+    51                                           
+    52     11513      24448.0      2.1      8.6          if prob > np.random.rand(1):
+    53     10000       9506.0      1.0      3.3              state[:] = state_1
+    54     10000       5086.0      0.5      1.8              state_prime = state_1_prime
+    55     10000       4272.0      0.4      1.5              log_values = log_values_1
+    56     10000       4055.0      0.4      1.4              n_conn = n_conn_1
+    57     10000       4224.0      0.4      1.5              accepted += 1
+    58                                           
+    59                                           
+    60                                                   # sections = sections_1
+    61                                           
+    62     11513       4451.0      0.4      1.6          N += 1
+    63     11513       4634.0      0.4      1.6          if accepted >= sweep_size:
+    64         1          0.0      0.0      0.0              break
+    65                                           
+    66         1          1.0      1.0      0.0      return accepted/N

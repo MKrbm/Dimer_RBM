@@ -102,6 +102,14 @@ class new_hex:
         self.label[:,1::2] = label_[1::2, :]
 
 
+        l_alpha = 1/2 * np.tan(1/6 * np.pi)
+        self.r_alpha = np.array([
+                                [0,  1*l_alpha],
+                                [-l_alpha * np.cos(np.pi/6), - l_alpha * np.sin(np.pi/6)],
+                                [l_alpha * np.cos(np.pi/6), - l_alpha * np.sin(np.pi/6)]
+                                ])
+
+
         
                     
         

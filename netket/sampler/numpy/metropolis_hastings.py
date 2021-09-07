@@ -169,7 +169,17 @@ class DimerMetropolisHastings(MetropolisHastings):
         _log_values_1 = self._log_values_1
         _log_prob_corr = self._log_prob_corr
         _machine_pow = self._machine_pow
-        _t_kernel = self._kernel.transition
+        # _t_kernel = self._kernel.transition
+
+
+        _t_kernel = self._kernel.new_transition_2
+        _state_prime = _state.reshape(-1)
+        _state1_prime = _state1.reshape(-1)
+
+        
+        # _t_kernel = self._kernel.new_transition
+
+
 
 
 
@@ -178,7 +188,7 @@ class DimerMetropolisHastings(MetropolisHastings):
             # Propose a new state using the transition kernel
         # start = time.time()
         sweep_size = _np.random.randint(0, 10) + self.sweep_size
-        accepted = _t_kernel(_state, _state1, self._w, None, sweep_size)
+        accepted = _t_kernel(_state_prime, _state1_prime, self._w, None, sweep_size)
         # print(f"accepted ratio : ",accepted)
         # print(_state.dtype)
         # print('transition took :' ,time.time()-start)

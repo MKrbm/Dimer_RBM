@@ -23,7 +23,9 @@ def _DimerLocalKernel(machine, op, kernel):
             op._mels,
             op._x_prime,
             op._acting_on,
-            op._acting_size
+            op._acting_size,
+            machine.hex.ad2o_o,
+            machine.hex.ad2_bool
         )
 
         
