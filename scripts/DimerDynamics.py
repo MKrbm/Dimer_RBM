@@ -31,13 +31,24 @@ def Dimer_Dynamics(h, V, length,alpha,  t_list, n_jobs = -1, n_chains = 10, n_sa
     hi = nk.hilbert.Spin(s=0.5, graph=g)
 
     op = f.dimer_hamiltonian(h, V,np.array(length))
+    op_transition , ad2o_o, op_num, label_num = f.dimer_flip1(length = np.array(length), return_info = True)
     op_transition = f.dimer_flip1(length = np.array(length))
+
     hex_ = nk.machine.new_hex(np.array(length))
 
 
     ma = nk.machine.RbmDimer(hi, hex_, alpha = alpha, symmetry = True
                         ,use_hidden_bias = False, use_visible_bias = False, dtype=float, reverse=True, half=True)
     
+    ad2_bool = np.zeros([ad2o_o.shape[0], ad2o_o.shape[0]], dtype = np.bool)
+    for l in range(ad2o_o.shape[0]):
+        label = ad2o_o[l]
+        for op_ in label:
+            ad2_bool[l,op_] = True
+            
+    ma.hex.ad2o_o = ad2o_o.astype(np.int64)
+    ma.hex.ad2_bool = ad2_bool
+
 
     if debug:
         ma.init_random_parameters(seed=1234)
@@ -48,7 +59,7 @@ def Dimer_Dynamics(h, V, length,alpha,  t_list, n_jobs = -1, n_chains = 10, n_sa
         print('loaded machine',time.time()-S)
 
     # sweep_size = 400
-    sa_mul = nk.sampler.DimerMetropolisLocal_multi(machine=ma, op=op_transition, length = length, n_chains=1, sweep_size = sweep_size, kernel = 1, n_jobs=n_jobs)
+    sa_mul = nk.sampler.DimerMetropolisLocal_multi(machine=ma, op=op_transition, length = length, n_chains=1, sweep_size = sweep_size, kernel = 1, n_jobs=n_jobs, transition = 1)
     sa_mul.reset()
     sa_mul.generate_samples(1000) # discard the begginings of metropolis sampling.
     print('discard samples',time.time()-S)
