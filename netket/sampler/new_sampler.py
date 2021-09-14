@@ -6,14 +6,14 @@ import mkl
 
 class DimerMetropolisLocal_multi():
 
-    def __init__(self, machine, op, n_chains=16, sweep_size=None, length = [4,2], kernel = 1, n_jobs = 1):
+    def __init__(self, machine, op, n_chains=16, sweep_size=None, length = [4,2], kernel = 1, n_jobs = 1, transition = 2):
         mkl.set_num_threads(1)
         print('number of core :', n_jobs)
         self.sa_list = []
         self.n_jobs = n_jobs
 
         for _ in range(n_jobs):
-            self.sa_list.append(DimerMetropolisLocal(machine=machine, op=op, length = length, n_chains=n_chains, sweep_size = sweep_size, kernel = kernel))
+            self.sa_list.append(DimerMetropolisLocal(machine=machine, op=op, length = length, n_chains=n_chains, sweep_size = sweep_size, kernel = kernel, transition = transition))
         
         self.sa_list[0].generate_samples(10)
         self.machine = machine

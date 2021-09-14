@@ -337,7 +337,7 @@ def dimer_hamiltonian(V, h,length = [4, 2]):
     return op
 
 
-def dimer_flip2(h = 1,length = [4, 2]):
+def dimer_flip_old(h = 1,length = [4, 2]):
 
 
     sigmaz = np.array([[1, 0], [0, -1]])
@@ -357,10 +357,10 @@ def dimer_flip2(h = 1,length = [4, 2]):
 
     g = nk.graph.Graph(nodes = [i for i in range(length[0] * length[1] * 2)])
 
-    e, ec, ce, cec = hexagon.for_hamiltonian()
+    e, ec, ce, cec = hexagon.for_hamiltonian_old()
 
     hi = nk.hilbert.Spin(s=0.5, graph=g)
-    op = nk.operator.DimerLocalOperator2(hi)
+    op = nk.operator.DimerLocalOperator(hi)
 
     for edge, edge_color, pe, pec in zip(e, ec, ce, cec):
 
@@ -378,8 +378,8 @@ def dimer_flip2(h = 1,length = [4, 2]):
             ))
             edge_.append(p[0].tolist() + p[1].tolist())
         
-        op += nk.operator.DimerLocalOperator2(hi, l_op @ mat[0], edge_[0])
-        op += nk.operator.DimerLocalOperator2(hi, l_op @ mat[1], edge_[1])
+        op += nk.operator.DimerLocalOperator(hi, l_op @ mat[0], edge_[0])
+        op += nk.operator.DimerLocalOperator(hi, l_op @ mat[1], edge_[1])
     
     return op
 

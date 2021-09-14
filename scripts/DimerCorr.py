@@ -178,6 +178,7 @@ def Dimer_Corr(h, V, length, t_list, n_samples, a):
                         dimer_corr[b,a][i,j] = tmp
                         dimer_corr[a,b][-i,-j] = tmp
 
+
         total_num_samples += num_samples
         Dimer += dimer_corr * num_samples
         Dimer_std += dimer_std * num_samples

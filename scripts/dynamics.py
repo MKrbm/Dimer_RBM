@@ -28,6 +28,8 @@ class new_dynamics:
         self.x_prime = op._x_prime[:,:,:,1:3].copy()
         self.acting_on = op._acting_on
         self.ma = ma
+        self.ad2o_o = ma.hex.ad2o_o
+        self.ad2_bool = self.ma.hex.ad2_bool
 
 
         self._w = ma._w

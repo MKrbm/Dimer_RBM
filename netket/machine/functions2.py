@@ -328,32 +328,36 @@ class new_hex:
         else:
             return e_, ec_, pe.reshape(shape + (2,2,2)), pec.reshape(shape + (2,2))
 
-        # e = self.edges
-        # ec = self.edges_color
+
+    def for_hamiltonian_old(self):
+        e = self.edges
+        ec = self.edges_color
 
 
-        # hex_index, alpha_index = self.from_edges_to_hex(e, num = True)
+        hex_index, alpha_index = self.from_edges_to_hex(e, num = True)
 
 
-        # alpha1 = alpha_index.copy()
-        # alpha1[:,0] = (alpha1[:,0] + 1) % 6
-        # alpha1[:,1] = (alpha1[:,1] + 1) % 6
+        alpha1 = alpha_index.copy()
+        alpha1[:,0] = (alpha1[:,0] + 1) % 6
+        alpha1[:,1] = (alpha1[:,1] + 1) % 6
 
-        # alpha2 = alpha_index.copy()
-        # alpha2[:,0] = (alpha2[:,0] - 1) % 6
-        # alpha2[:,1] = (alpha2[:,1] - 1) % 6
+        alpha2 = alpha_index.copy()
+        alpha2[:,0] = (alpha2[:,0] - 1) % 6
+        alpha2[:,1] = (alpha2[:,1] - 1) % 6
         
 
-        # pe1 = self.edges_from_hex[hex_index, alpha1]
+        pe1 = self.edges_from_hex[hex_index, alpha1]
 
-        # pe2 = self.edges_from_hex[hex_index, alpha2]
+        pe2 = self.edges_from_hex[hex_index, alpha2]
 
 
-        # pe = np.concatenate((pe1[:,None,:,:],pe2[:,None,:,::-1]), axis=1)
-        # temp = pe[:,:,0,:]
-        # pe[:,:,0,:] = temp[:,:,::-1]
+        pe = np.concatenate((pe1[:,None,:,:],pe2[:,None,:,::-1]), axis=1)
+        temp = pe[:,:,0,:]
+        pe[:,:,0,:] = temp[:,:,::-1]
 
-        # pec = self.get_edge_color(pe)
+        pec = self.get_edge_color(pe)
+    
+        return e, ec, pe, pec
     
     def lattice_num_to_coor(self, num):
 

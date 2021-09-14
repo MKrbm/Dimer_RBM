@@ -1,0 +1,106 @@
+Timer unit: 1e-06 s
+
+Total time: 0 s
+File: ../scripts/dynamics_4.py
+Function: _dynamics at line 75
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+    75                                               @staticmethod
+    76                                               @njit
+    77                                               def _dynamics(
+    78                                                       X,
+    79                                                       t_list,
+    80                                                       _basis,
+    81                                                       _constant,
+    82                                                       _diag_mels,
+    83                                                       _n_conns,
+    84                                                       _mels,
+    85                                                       _x_prime,
+    86                                                       _acting_on,
+    87                                                       _w,
+    88                                                       c_r,
+    89                                                       s_r,
+    90                                                       ):
+    91                                                   
+    92                                                   # basis is float64[:]
+    93                                                   
+    94                                           
+    95                                                   batch_size = X.shape[0]
+    96                                                   t_num = len(t_list)
+    97                                                   L = X.shape[1]
+    98                                                   p_array = np.zeros((batch_size, t_num, L),dtype= np.int8) 
+    99                                                   p_array[:,0,:] = X[:,:]
+   100                                                   X = X.astype(np.int8)
+   101                                                   _x_prime = _x_prime.astype(np.int8)
+   102                                                   
+   103                                                   
+   104                                           
+   105                                                   
+   106                                           #         T = np.zeros(batch_size)
+   107                                                   t_delta = t_list[1] - t_list[0]
+   108                                           
+   109                                                   l = 0
+   110                                                   for b in range(batch_size):
+   111                                                       T = 0
+   112                                                       ti_old = np.int64(0)
+   113                                                       x_b = X[b]
+   114                                                       P = p_array[b]
+   115                                                       sections = 0
+   116                                                       
+   117                                                       while True:
+   118                                           
+   119                                           
+   120                                                           r = (x_b).astype(np.float64).dot(_w)
+   121                                                           tan = np.tanh(r)
+   122                                           
+   123                                           
+   124                                                           x_prime, sites, mels  = get_transition_one(
+   125                                                                               x_b,
+   126                                                                               c_r,
+   127                                                                               s_r,
+   128                                                                               tan,
+   129                                                                               sections,
+   130                                                                               _basis,
+   131                                                                               _constant,
+   132                                                                               _diag_mels,
+   133                                                                               _n_conns,
+   134                                                                               _mels,
+   135                                                                               _x_prime,
+   136                                                                               _acting_on)
+   137                                           
+   138                                           
+   139                                                           N_conn = mels.shape[0]
+   140                                           #                 print(x_b)
+   141                                           #                 print(x_prime, sites, mels)
+   142                                           #                 for n in range(batch_size):
+   143                                           #                     a_0[n] = (-1)* mels[sections[n]: sections[n+1]].sum()
+   144                                                           a_0 = (-1) * mels.sum()
+   145                                           
+   146                                                           r_1 = random.random()
+   147                                                           r_2 = random.random()
+   148                                           
+   149                                                           tau = np.log(1/r_1)/a_0
+   150                                                           T += tau
+   151                                           
+   152                                           #                 print(T,ti_new)
+   153                                                           if T > (t_list[-1] + t_delta):
+   154                                                               P[ti_old+1:] = x_b
+   155                                                               break
+   156                                                               
+   157                                                           ti_new = np.int64(T // t_delta)
+   158                                           
+   159                                                           if ti_new > ti_old:
+   160                                                               P[ti_old+1:ti_new+1] = x_b
+   161                                           #                     P[ti_new] = x_b
+   162                                                               ti_old = ti_new
+   163                                                           s = 0
+   164                                                           for i in range(N_conn):
+   165                                                               s -= mels[i]
+   166                                                               if s >= r_2 * a_0:
+   167                                                                   x_b[sites[i]] = x_prime[i]
+   168                                                                   break
+   169                                                           l += 1
+   170                                                       p_array[b,:,:] = P[:,:]
+   171                                           
+   172                                                   return p_array

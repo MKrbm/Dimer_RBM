@@ -17,7 +17,7 @@ def Dimer_RBM(h, V, length, alpha, n_iter, n_samples, n_chains, n_discard , swee
     n_jobs = -1
     if n_jobs == -1:
         try:
-            n_jobs = int(os.environ['SLURM_JOB_CPUS_PER_NODE'])
+            n_jobs = int(int(os.environ['SLURM_JOB_CPUS_PER_NODE'])/2)
         except:
             n_jobs = os.cpu_count()
         print('n_jobs',n_jobs)
@@ -34,10 +34,17 @@ def Dimer_RBM(h, V, length, alpha, n_iter, n_samples, n_chains, n_discard , swee
 
 
     ham = f.dimer_hamiltonian(V = V, h = h ,length=np.array(length))
-    op_transition1 = f.dimer_flip1(length = np.array(length))
+    op_transition1, ad2o_o, op_num, label_num  = f.dimer_flip1(length = np.array(length), return_info = True)
 
-
+    ad2_bool = np.zeros([ad2o_o.shape[0], ad2o_o.shape[0]], dtype = np.bool)
+    for l in range(ad2o_o.shape[0]):
+        label = ad2o_o[l]
+        for op_ in label:
+            ad2_bool[l,op_] = True
+            
     hex_ = nk.machine.new_hex(np.array(length))
+
+
 
     ma = nk.machine.RbmDimer(hi, hex_, alpha = alpha, symmetry = True
                         ,use_hidden_bias = False, use_visible_bias = False, dtype=float, reverse=True, half=True)
@@ -48,13 +55,17 @@ def Dimer_RBM(h, V, length, alpha, n_iter, n_samples, n_chains, n_discard , swee
         print('load saved params')
     except:
         pass
-
+    
+    ma.hex.ad2o_o = ad2o_o.astype(np.int64)
+    ma.hex.ad2_bool = ad2_bool
 
     sa_mul = nk.sampler.DimerMetropolisLocal_multi(machine=ma, op=op_transition1
         , length = length, n_chains=n_chains, sweep_size = sweep_size, kernel = 1, n_jobs=n_jobs)
+        
 
     sr = nk.optimizer.SR(ma, diag_shift=5e-3)
     opt = nk.optimizer.Sgd(ma, learning_rate=0.05, decay_factor = decay_factor ,N = n_iter)
+
 
     gs = nk.Vmc(
     hamiltonian=ham,

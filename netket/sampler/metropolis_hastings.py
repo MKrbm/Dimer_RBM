@@ -78,6 +78,6 @@ def MetropolisHastingsPt(machine, kernel, n_replicas=32, sweep_size=None):
 
 
 @singledispatch
-def DimerMetropolisHastings(machine, kernel, n_chains=16, sweep_size=None, length = [4,2]):
+def DimerMetropolisHastings(machine, kernel, n_chains=16, sweep_size=None, length = [4,2], transition = 2):
 
-    return numpy.DimerMetropolisHastings(machine, kernel, n_chains, sweep_size, length)
+    return numpy.DimerMetropolisHastings(machine, kernel, n_chains, sweep_size, length, transition)

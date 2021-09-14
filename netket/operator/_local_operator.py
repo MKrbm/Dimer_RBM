@@ -582,7 +582,7 @@ class LocalOperator(AbstractOperator):
         # print('sections', sections)
 
 
-
+        print('yo')
         return self._get_conn_flattened_kernel(
             x,
             sections,
@@ -656,6 +656,7 @@ class LocalOperator(AbstractOperator):
 
         x_prime = _np.empty((tot_conn, n_sites), dtype=_np.int8) # x.shpae[0] is number of connected elements of hamiltonian from batch of states. 
         mels = _np.empty(tot_conn, dtype=_np.complex128)
+        conn_op = _np.zeros(tot_conn, dtype=_np.int64)
 
         c = 0
         for b in range(batch_size):
@@ -675,6 +676,7 @@ class LocalOperator(AbstractOperator):
                     acting_size_i = acting_size[i]
 
                     for cc in range(n_conn_i):
+                        conn_op[c+cc] = i
                         mels[c + cc] = all_mels[i, xs_n[b, i], cc]
                         x_prime[c + cc] = _np.copy(x_batch) # assigin original basis to n_conn_i number of vectors, where n_conn_i means number of connected basis from one local operator indexed by i. 
 

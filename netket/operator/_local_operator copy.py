@@ -642,7 +642,7 @@ class LocalOperator(AbstractOperator):
 
         x_prime = _np.empty((tot_conn, n_sites)) # x.shpae[0] is number of connected elements of hamiltonian from batch of states. 
         mels = _np.empty(tot_conn, dtype=_np.complex128)
-
+        conn_op_prime = _np.empty(tot_conn)
         c = 0
         for b in range(batch_size):
             c_diag = c
@@ -661,6 +661,7 @@ class LocalOperator(AbstractOperator):
                     acting_size_i = acting_size[i]
 
                     for cc in range(n_conn_i):
+                        conn_op_prime[c+cc] = i
                         mels[c + cc] = all_mels[i, xs_n[b, i], cc]
                         x_prime[c + cc] = _np.copy(x_batch) # assigin original basis to n_conn_i number of vectors, where n_conn_i means number of connected basis from one local operator indexed by i. 
 
@@ -677,7 +678,7 @@ class LocalOperator(AbstractOperator):
                 c += delta_conn
                 sections[b] = c
 
-        return x_prime, mels
+        return x_prime, mels, conn_op_prime
 
     def get_conn_filtered(self, x, sections, filters):
         r"""Finds the connected elements of the Operator using only a subset of operators. Starting
