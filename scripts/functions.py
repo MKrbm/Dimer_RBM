@@ -1340,6 +1340,46 @@ def cal_dimer_corr(operator,operators , P_list, hex_, t_list):
     
     return dimer_corr, dimer_std, num_samples
 
+def cal_dimer_corr_2(operators , P_list, hex_, t_list):
+    
+    length =hex_.l
+    
+    finite_index = (P_list[:,:,0]!=0)
+    num_samples = finite_index.sum(axis=1)
+    P_list_ = P_list.reshape(-1,P_list.shape[-1])
+    sections1 = np.arange(P_list.shape[1])
+    sections2 = np.zeros(P_list_.shape[0])
+    dimer_corr = np.zeros((2*length[0],2*length[1],2*length[0],2*length[1],t_list.shape[0]))
+    dimer_std = np.zeros((2*length[0],2*length[1],2*length[0],2*length[1],t_list.shape[0]))
+
+
+    for i2 in range(2*length[1]):
+        for i1 in range(2*length[0]):
+            operator = operators[ i1 + i2 * (2*length[1]) ]
+            if not operator:
+                continue
+            _, mels1 = operator.get_conn_flattened(P_list_, sections2)
+            mels1 = mels1.reshape(P_list.shape[0], P_list.shape[1]).real * finite_index
+            sub1 = (mels1.sum(axis=-1)/num_samples).real
+
+
+
+            # dimer_corr = np.zeros((2*length[0],2*length[1],t_list.shape[0]))
+            # dimer_std = np.zeros((2*length[0],2*length[1],t_list.shape[0]))
+
+            for l2 in range(2*length[1]):
+                for l1 in range(2*length[0]):
+                    operator_prime = operators[l1 + 2*l2 * length[0]]
+                    if operator_prime:
+                        mels2 = operator_prime.get_conn_flattened(P_list[0,:,:], sections1)[1].real
+                        sub2 = mels2.mean()
+                        
+                        dimer_corr[l1,l2, i1,i2] = (mels2 * mels1).sum(axis=1)/num_samples 
+                        dimer_std[l1,l2, i1,i2] = np.sqrt(((mels2 * mels1)**2).sum(axis=-1)/num_samples - (((mels2 * mels1)).sum(axis=-1)/num_samples)**2)
+                        # dimer_std[l1,l2] /= np.sqrt(num_samples)
+    
+    
+    return dimer_corr, dimer_std, num_samples
 
 def cal_vison_corr(operator, P_list, hex_, t_list):
     

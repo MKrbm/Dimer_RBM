@@ -582,7 +582,7 @@ class LocalOperator(AbstractOperator):
         # print('sections', sections)
 
 
-        print('yo')
+        # print('yo')
         return self._get_conn_flattened_kernel(
             x,
             sections,

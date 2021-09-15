@@ -56,11 +56,12 @@ def Dimer_RBM(h, V, length, alpha, n_iter, n_samples, n_chains, n_discard , swee
     except:
         pass
     
+    transition = 2
     ma.hex.ad2o_o = ad2o_o.astype(np.int64)
     ma.hex.ad2_bool = ad2_bool
 
     sa_mul = nk.sampler.DimerMetropolisLocal_multi(machine=ma, op=op_transition1
-        , length = length, n_chains=n_chains, sweep_size = sweep_size, kernel = 1, n_jobs=n_jobs)
+        , length = length, n_chains=n_chains, sweep_size = sweep_size, kernel = 1, n_jobs=n_jobs, transition = transition)
         
 
     sr = nk.optimizer.SR(ma, diag_shift=5e-3)

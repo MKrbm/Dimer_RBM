@@ -32,9 +32,16 @@ def Dimer_Dynamics(h, V, length,alpha,  t_list, n_jobs = -1, n_chains = 10, n_sa
 
     op = f.dimer_hamiltonian(h, V,np.array(length))
     op_transition , ad2o_o, op_num, label_num = f.dimer_flip1(length = np.array(length), return_info = True)
-    op_transition = f.dimer_flip1(length = np.array(length))
+
+
+    transition = 2
+
+
+    if transition == 1:
+        op_transition = f.dimer_flip1(length = np.array(length))
 
     hex_ = nk.machine.new_hex(np.array(length))
+
 
 
     ma = nk.machine.RbmDimer(hi, hex_, alpha = alpha, symmetry = True
@@ -59,7 +66,7 @@ def Dimer_Dynamics(h, V, length,alpha,  t_list, n_jobs = -1, n_chains = 10, n_sa
         print('loaded machine',time.time()-S)
 
     # sweep_size = 400
-    sa_mul = nk.sampler.DimerMetropolisLocal_multi(machine=ma, op=op_transition, length = length, n_chains=1, sweep_size = sweep_size, kernel = 1, n_jobs=n_jobs, transition = 1)
+    sa_mul = nk.sampler.DimerMetropolisLocal_multi(machine=ma, op=op_transition, length = length, n_chains=1, sweep_size = sweep_size, kernel = 1, n_jobs=n_jobs, transition = transition)
     sa_mul.reset()
     sa_mul.generate_samples(1000) # discard the begginings of metropolis sampling.
     print('discard samples',time.time()-S)
