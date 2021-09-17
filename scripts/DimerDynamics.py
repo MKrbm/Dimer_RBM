@@ -68,8 +68,7 @@ def Dimer_Dynamics(h, V, length,alpha,  t_list, n_jobs = -1, n_chains = 10, n_sa
     # sweep_size = 400
     sa_mul = nk.sampler.DimerMetropolisLocal_multi(machine=ma, op=op_transition, length = length, n_chains=1, sweep_size = sweep_size, kernel = 1, n_jobs=n_jobs, transition = transition)
     sa_mul.reset()
-    sa_mul.generate_samples(1000) # discard the begginings of metropolis sampling.
-    print('discard samples',time.time()-S)
+
 
 
     '''
@@ -82,6 +81,8 @@ def Dimer_Dynamics(h, V, length,alpha,  t_list, n_jobs = -1, n_chains = 10, n_sa
     n_max = int(n_samples/n_samples_)
     # n_samples_ = int(n_samples/n_max)
     for n in range(n_max):
+        sa_mul.generate_samples(1000) # discard the begginings of metropolis sampling.
+        print('discard samples',time.time()-S)
 
         samples_state = sa_mul.generate_samples(int(n_samples_ / n_chains))
         samples_state = samples_state.reshape(-1, ma.hilbert.size)

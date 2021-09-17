@@ -14,7 +14,7 @@ def Dimer_RBM(h, V, length, alpha, n_iter, n_samples, n_chains, n_discard , swee
     # sweep_size = 200
     decay_factor = 1  # or 'sigmoid decay'
 
-    n_jobs = -1
+    n_jobs = 1
     if n_jobs == -1:
         try:
             n_jobs = int(int(os.environ['SLURM_JOB_CPUS_PER_NODE'])/2)

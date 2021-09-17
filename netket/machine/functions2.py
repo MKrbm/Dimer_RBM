@@ -18,7 +18,7 @@ class new_hex:
     
     def __init__(self, l = np.array([4, 2])):
         
-        self.a1 = self.a(np.float32(0))
+        self.a1 = self.a(np.float64(0))
         self.a2 =  self.a(np.pi*(5/3))
         A = np.array([
             self.a1,
@@ -42,23 +42,23 @@ class new_hex:
         self.R1 = self.a1 * l[0]
         self.R2 = self.a2 * l[1]
         
-        self.epsilon = 1e-5
+        self.epsilon = 1e-3
         
         self.l = l
         
-        self.x_array = np.zeros((l[0],l[1],2)).astype(np.float32)
+        self.x_array = np.zeros((l[0],l[1],2)).astype(np.float64)
         
         for i in range(l[0]):
             for j in range(l[1]):
                 self.x_array[i, j] = self.a1 * i + self.a2 * j
         
-        self.x = np.zeros((np.prod(l),2), dtype=np.float32)
+        self.x = np.zeros((np.prod(l),2), dtype=np.float64)
         
         for i in range(l[0]):
             for j in range(l[1]):
                 self.x[j * l[0] + i] = self.x_array[i, j]
         
-        self.lattice_coor_array = np.zeros([l[0], l[1], 6, 2],dtype=np.float32)
+        self.lattice_coor_array = np.zeros([l[0], l[1], 6, 2],dtype=np.float64)
         
         
         
@@ -72,12 +72,14 @@ class new_hex:
                     
 
                     
-        self.lattice_coor = np.zeros((np.prod(l) * 2, 2), dtype=np.float32)
+        self.lattice_coor = np.zeros((np.prod(l) * 2, 2), dtype=np.float64)
         
         for j in range(l[1]):
             for n,a in enumerate([0,5]):
                 for i in range(l[0]):
                     self.lattice_coor[j * 2 * l[0] + l[0] * n + i] = self.lattice_coor_array[i, j, a] 
+
+        # self.lattice_coor = np.round(self.lattice_coor, 5)
                     
 
         self.all_hex_index = []
@@ -119,7 +121,7 @@ class new_hex:
         return self.Rotation(theta) @ np.array([1,0])
     
     def alpha(self, i):
-        r = np.array([0, (1/(np.sqrt(3)))],dtype=np.float32)
+        r = np.array([0, (1/(np.sqrt(3)))],dtype=np.float64)
         
         return self.Rotation(np.pi*(1/3) * i) @ r
     
@@ -168,7 +170,7 @@ class new_hex:
         '''
         
         l = l.reshape(-1,2)
-        edge = np.zeros((l.shape[0],6,2,2),dtype=np.float32)
+        edge = np.zeros((l.shape[0],6,2,2),dtype=np.float64)
         
         if color:
             color_ = np.ones((l.shape[0],6),dtype=np.int)
@@ -371,9 +373,20 @@ class new_hex:
 
         coor_ = coor.reshape(-1, 2)
         
-        temp = np.argwhere(np.abs(np.expand_dims(self.lattice_coor,axis=0) - np.expand_dims(coor_,axis=1)).sum(-1) < self.epsilon)[:,1]
+        # temp = np.argwhere(np.abs(np.expand_dims(self.lattice_coor,axis=0) - np.expand_dims(coor_,axis=1)).sum(-1) < self.epsilon)[:,1]
 
-        return temp.reshape(coor.shape[:-1])
+        index = np.zeros(coor_.shape[0], dtype = np.int)
+
+        s = 0
+        for coord in coor_:
+            tmp = (np.abs(self.lattice_coor - coord) < self.epsilon).all(-1)
+            if tmp.any():
+                index[s] = np.where(tmp)[0][0]
+            else:
+                index[s] = -1
+            s += 1
+
+        return index.reshape(coor.shape[:-1])
 
     
     def translation(self,coors, c, b=None):
@@ -525,7 +538,7 @@ class new_hex:
         
         V_ = V.reshape(-1,2)
         
-        l_vec = np.zeros((V_.shape[0],2),dtype=np.float32)
+        l_vec = np.zeros((V_.shape[0],2),dtype=np.float64)
         
         for i, v in enumerate(V_):
             w = self.decompose(v, self.a1, self.a2)
@@ -559,7 +572,7 @@ class new_hex:
     
     @staticmethod
     def Rotation(theta):
-        return np.array([[np.cos(theta), -np.sin(theta)],[np.sin(theta), np.cos(theta)]]).astype(np.float32)
+        return np.array([[np.cos(theta), -np.sin(theta)],[np.sin(theta), np.cos(theta)]]).astype(np.float64)
 
     
     def get_z2(self):

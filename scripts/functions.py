@@ -1340,8 +1340,8 @@ def cal_dimer_corr(operator,operators , P_list, hex_, t_list):
     
     return dimer_corr, dimer_std, num_samples
 
-def cal_dimer_corr_2(operators , P_list, hex_, t_list):
-    
+def cal_dimer_corr_2(operators , P_list, hex_, t_list, sub_limit = True):
+
     length =hex_.l
     
     finite_index = (P_list[:,:,0]!=0)
@@ -1352,70 +1352,166 @@ def cal_dimer_corr_2(operators , P_list, hex_, t_list):
     dimer_corr = np.zeros((2*length[0],2*length[1],2*length[0],2*length[1],t_list.shape[0]))
     dimer_std = np.zeros((2*length[0],2*length[1],2*length[0],2*length[1],t_list.shape[0]))
 
-
+    mels_array = np.zeros((2*length[0],2*length[1],P_list.shape[0],P_list.shape[1]))   
     for i2 in range(2*length[1]):
+        print(i2)
         for i1 in range(2*length[0]):
-            operator = operators[ i1 + i2 * (2*length[1]) ]
+            operator = operators[ i1 + i2 * (2*length[0]) ]
             if not operator:
                 continue
             _, mels1 = operator.get_conn_flattened(P_list_, sections2)
-            mels1 = mels1.reshape(P_list.shape[0], P_list.shape[1]).real * finite_index
-            sub1 = (mels1.sum(axis=-1)/num_samples).real
+            mels_array[i1, i2] = mels1.reshape(P_list.shape[0], P_list.shape[1]).real 
 
-
-
-            # dimer_corr = np.zeros((2*length[0],2*length[1],t_list.shape[0]))
-            # dimer_std = np.zeros((2*length[0],2*length[1],t_list.shape[0]))
-
-            for l2 in range(2*length[1]):
-                for l1 in range(2*length[0]):
-                    operator_prime = operators[l1 + 2*l2 * length[0]]
-                    if operator_prime:
-                        mels2 = operator_prime.get_conn_flattened(P_list[0,:,:], sections1)[1].real
-                        sub2 = mels2.mean()
-                        
-                        dimer_corr[l1,l2, i1,i2] = (mels2 * mels1).sum(axis=1)/num_samples 
-                        dimer_std[l1,l2, i1,i2] = np.sqrt(((mels2 * mels1)**2).sum(axis=-1)/num_samples - (((mels2 * mels1)).sum(axis=-1)/num_samples)**2)
-                        # dimer_std[l1,l2] /= np.sqrt(num_samples)
-    
+    print("done pre")
+    cal_all_corr(dimer_corr, dimer_std, mels_array ,sub_limit)
     
     return dimer_corr, dimer_std, num_samples
 
-def cal_vison_corr(operator, P_list, hex_, t_list):
+@njit
+def cal_all_corr(dimer_corr , dimer_std, mels_array, sub_limit):
+    
+    (L1, L2) = dimer_corr.shape[:2]
+
+    for i2 in range(L2):
+        for i1 in range(L1):
+            mels1 = mels_array[i1, i2]
+            for l2 in range(L2):
+                for l1 in range(L1):
+
+                    mels2 = mels_array[l1, l2][0]
+
+                    tmp = np.zeros(mels2.shape[0])
+                    mel_pro = mels2 * mels1
+
+                    dimer_corr[l1,l2, i1,i2] = (mels2 * mels1).sum(axis=1) / mels1.shape[1]
+                    if sub_limit:
+                        dimer_corr[l1,l2, i1,i2] -= mels2.mean() * mels1[0].mean()
+    
+    
+
+
+def process_symm_dimer(dimer_corr):
+
+    L1 = dimer_corr.shape[0]
+    L2 = dimer_corr.shape[1]
+
+    dimer_corr_prime = np.zeros_like(dimer_corr)
+
+    for i1 in range(L1):
+        for i2 in range(L2):
+            for l1 in range(L1):
+                for l2 in range(L2):
+                    N = 0
+                    if (dimer_corr[i1,i2,l1,l2] == 0).all():
+                        continue
+                    for jj1 in range(int(L1/2)):
+                        j1 = 2*jj1
+                        for jj2 in range(int(L2/2)):
+                            j2 = 2 * jj2
+                            if not (dimer_corr[(i1+j1)%L1,(i2+j2)%L2,(l1+j1)%L1,(l2+j2)%L2] == 0).all():
+                                dimer_corr_prime[i1,i2,l1,l2] += dimer_corr[(i1+j1)%L1,(i2+j2)%L2,(l1+j1)%L1,(l2+j2)%L2]
+                                N += 1
+                        
+                    dimer_corr_prime[i1,i2,l1,l2] /= N
+
+
+    for i1 in range(L1):
+        for i2 in range(L2):
+            for l1 in range(L1):
+                for l2 in range(L2):
+                    tmp = dimer_corr_prime[i1,i2,l1,l2] + dimer_corr_prime[l1,l2,i1,i2]
+                    tmp /= 2
+                    dimer_corr_prime[i1,i2,l1,l2] = tmp
+                    dimer_corr_prime[l1,l2,i1,i2] = tmp
+
+    return dimer_corr_prime
+
+def cal_vison_corr(operators, P_list, hex_, t_list, sub_limit=False):
     
     length = hex_.l
-    
+
+    L1 = 3 * hex_.l[0]
+    L2 = hex_.l[1]
+
     finite_index = (P_list[:,:,0]!=0)
     num_samples = finite_index.sum(axis=1)
     P_list_ = P_list.reshape(-1,P_list.shape[-1])
     sections1 = np.arange(P_list.shape[1])
     sections2 = np.zeros(P_list_.shape[0])
+    vison_corr = np.zeros((L1,L2,L1,L2,t_list.shape[0]))
+    vison_std = np.zeros((L1,L2,L1,L2,t_list.shape[0]))
+    mels_array = np.zeros((L1,L2,P_list.shape[0],P_list.shape[1]))   
 
-    _, mels1 = operator[0].get_conn_flattened(P_list_, sections2)
-    mels1 = mels1.reshape(P_list.shape[0], P_list.shape[1]).real * finite_index
-    sub1 = (mels1.sum(axis=-1)/num_samples).real
-
-    L = len(operator)
-
-    dimer_corr = np.zeros((L,t_list.shape[0]))
-    dimer_std = np.zeros((L,t_list.shape[0]))
-
-
-    for l in range(L):
-
-        if operator[l]:
-            mels2 = operator[l].get_conn_flattened(P_list[0,:,:], sections1)[1].real
-            sub2 = mels2.mean()
-            
-            dimer_corr[l] = (mels2 * mels1).sum(axis=1)/num_samples 
-            dimer_std[l] = np.sqrt(((mels2 * mels1)**2).sum(axis=-1)/num_samples - (((mels2 * mels1)).sum(axis=-1)/num_samples)**2)
-            # dimer_std[l1,l2] /= np.sqrt(num_samples)
-        else:
-            dimer_corr[l] = 0
-            dimer_std[l] = 0
+    for i2 in range(L2):
+        print(i2)
+        for i1 in range(L1):
+            operator = operators[ i1 + i2 * L1 ]
+            if not operator:
+                continue
+            _, mels1 = operator.get_conn_flattened(P_list_, sections2)
+            mels_array[i1, i2] = mels1.reshape(P_list.shape[0], P_list.shape[1]).real 
     
+    cal_all_corr(vison_corr, vison_std, mels_array ,sub_limit)
     
-    return dimer_corr, dimer_std, num_samples
+    return vison_corr, vison_std, num_samples
+
+def process_symm_vison(vison_corr, coor_label, hex_):
+
+    L1 = vison_corr.shape[0]
+    L2 = vison_corr.shape[1]
+    T, C = hex_.autom(half=True)
+
+
+    vison_corr_prime = np.zeros_like(vison_corr)
+
+    for i1 in range(L1):
+        for i2 in range(L2):
+
+            label1 = coor_label[i1 + L1 * i2]
+            for l1 in range(L1):
+                for l2 in range(L2):
+                    label2 = coor_label[l1 + L1 * l2]
+                    N = 0
+                    if (vison_corr[i1,i2,l1,l2] == 0).all():
+                        continue
+                    m1, m2, n1, n2 = (i1,i2,l1,l2)
+                    m1_, m2_, n1_, n2_ = m1, m2, n1, n2
+                    for i in range(int(L1/3)):
+                        m1__, m2__, n1__, n2__ = m1_, m2_, n1_, n2_
+                        for j in range(L2):
+                            if not (vison_corr[m1__, m2__, n1__, n2__] == 0).all():
+                                
+                                label1_prime = coor_label[m1__ + L1 * m2__]
+                                label2_prime = coor_label[n1__ + L1 * n2__]
+
+                                prod = 1
+                                if np.where(T[:,:,label1] == label1_prime)[0][0] == 1:
+                                    prod = C[1][label1] * C[1][label2]
+                                vison_corr_prime[i1,i2,l1,l2] += vison_corr[m1__, m2__, n1__, n2__] * prod
+                                m1__, m2__, n1__, n2__ = (m1__, m2__+1, n1__, n2__+1)
+                                m1__, m2__ = m1__%12, m2__%4
+                                n1__, n2__ = n1__%12, n2__%4
+                                N += 1
+                            
+                        m1_, m2_, n1_, n2_ = (m1_+3, m2_-1, n1_+3, n2_-1)
+                        m1_, m2_ = m1_%12, m2_%4
+                        n1_, n2_ = n1_%12, n2_%4
+                        
+                    vison_corr_prime[i1,i2,l1,l2] /= N
+
+
+    for i1 in range(L1):
+        for i2 in range(L2):
+            for l1 in range(L1):
+                for l2 in range(L2):
+                    tmp = vison_corr_prime[i1,i2,l1,l2] + vison_corr_prime[l1,l2,i1,i2]
+                    tmp /= 2
+                    vison_corr_prime[i1,i2,l1,l2] = tmp
+                    vison_corr_prime[l1,l2,i1,i2] = tmp
+
+    return vison_corr_prime
+
+
 
 
 @njit
@@ -1458,6 +1554,59 @@ def dimer_fourier2D(corr):
     return momentum
 
 
+def dimer_fourier_simple(dimer_corr, hex_, edge_coor_array):
+    L1 = dimer_corr.shape[0]
+    L2 = dimer_corr.shape[1]
+    A = np.array([
+    hex_.a1/2,
+    hex_.a2/2
+    ])
+    [b1, b2] = np.linalg.inv(A.T)
+    b = np.array([b1, b2])
+    G = edge_coor_array @ b.T
+
+    momentum = np.zeros((L1, L2, dimer_corr.shape[-1]), dtype=np.complex128)
+
+    for m1 in range(L1):
+        for m2 in range(L2):
+            for j1 in range(L1):
+                for j2 in range(L2):
+                    for l1 in range(L1):
+                        for l2 in range(L2):
+                            G1 = G[j1 + L1*j2]
+                            G2 = G[l1 + L1*l2]
+                            momentum[m1,m2] += np.exp(-1j*(m1*(G1[0] - G2[0])/L1 * 2 * np.pi + m2*(G1[1] - G2[1])/L2 *2* np.pi)) * dimer_corr[j1,j2,l1,l2]
+            momentum[m1,m2] /= (L1*L2)
+    return momentum
+
+
+def vison_fourier_simple(vison_corr, hex_, edge_coor_array):
+
+    v1 = np.array([0.5, -np.tan(np.pi / 6) * 1/2])
+    v2 = hex_.lattice_coor[2] - hex_.lattice_coor[1]
+
+    L1 = vison_corr.shape[0]
+    L2 = vison_corr.shape[1]
+    A = np.array([v1,v2])
+    [vb1, vb2] = np.linalg.inv(A.T)
+    b = np.array([vb1, vb2])
+    G = edge_coor_array @ b.T
+
+    momentum = np.zeros((L1, L2, vison_corr.shape[-1]), dtype=np.complex128)
+
+    for m1 in range(L1):
+        for m2 in range(L2):
+            for j1 in range(L1):
+                for j2 in range(L2):
+                    for l1 in range(L1):
+                        for l2 in range(L2):
+                            G1 = G[j1 + L1*j2]
+                            G2 = G[l1 + L1*l2]
+                            momentum[m1,m2] += np.exp(-1j*(m1*(G1[0] - G2[0])/L1 * 2 * np.pi + m2*(G1[1] - G2[1])/L2 *2* np.pi)) * vison_corr[j1,j2,l1,l2]
+            momentum[m1,m2] /= (L1*L2)
+    return momentum
+
+
 def dimer_fourier2D_sub(dimer_m_, t_list, hex_):
     A = np.array([
     hex_.a1,
@@ -1484,3 +1633,12 @@ def dimer_fourier2D_sub(dimer_m_, t_list, hex_):
                     tmp += np.exp(-1j * (m1* (2*np.pi) /L *(G[a,0] - G[b,0]) + m2* (2*np.pi) /L *(G[a,1] - G[b,1]))) * dimer_m_[a,b,m1,m2]
             dimer_momentum[m1,m2] = tmp / 3
     return dimer_momentum
+
+def process_index(i1, i2, L = 4):
+    if i2 == -1:
+        i1 = (i1 - L) 
+        i2 = L-1
+    elif i2 == 4:
+        i1 = (i1 + L) 
+        i2 = 0
+    return i1% (L*3) , i2 % L

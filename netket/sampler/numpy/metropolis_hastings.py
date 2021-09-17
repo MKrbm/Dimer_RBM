@@ -172,7 +172,7 @@ class DimerMetropolisHastings(MetropolisHastings):
         _log_values_1 = self._log_values_1
         _log_prob_corr = self._log_prob_corr
         _machine_pow = self._machine_pow
-        sweep_size = _np.random.randint(0, 10) + self.sweep_size
+        sweep_size = _np.int(self.sweep_size * _np.random.uniform(0.5, 1.5))
 
 
 
